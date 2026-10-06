@@ -46,4 +46,3 @@ Import relu depuis Paperclip : 24 tâches uniques, 36 dépendances conformes au 
 La première tâche disponible est [T01 / GOU-263](https://yamaka.me/GOU/issues/GOU-263). Une dépendance doit être intégrée sur `main` avant de lancer sa tâche dépendante.
 
 Le commit de référence ci-dessus porte les exigences validées. Cet index est publié dans un commit distinct pour éviter toute autoréférence de SHA. Toute évolution des exigences doit modifier le corpus dans Git puis actualiser les descriptions et références des tâches concernées. Les inconnues EBP restent suivies dans [09](09-preuves-et-recette.md).
-
