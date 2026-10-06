@@ -21,6 +21,8 @@ La couverture des quatre familles et le catalogue cible sont conservés. La prop
 | D07 | Quota partagé entre processus par groupe d'abonnement configuré ; compteur local explicitement estimatif | Le profil OAuth n'est pas nécessairement l'unité de quota EBP |
 | D08 | Validation ici, puis commit/push GitHub, création du projet Paperclip et import du backlog lié au commit | Respecter la demande de validation préalable et garantir des références documentaires stables |
 
+D09 n'est pas un arbitrage de ce tableau : c'est la mise en application de D02 et A23 par Lead Tech au titre de T01, consignée dans [10](10-socle-versions.md). Elle fige les versions exactes du socle et la bibliothèque décimale sans modifier les contrats de 07.
+
 ## Erreurs et lacunes identifiées
 
 P0 = risque de données fausses, fuite ou auth inutilisable ; P1 = ambiguïté bloquant une implémentation fiable ; P2 = documentation ou périmètre à clarifier. Les emplacements désignent les formulations initiales, corrigées ou remplacées par 07.
