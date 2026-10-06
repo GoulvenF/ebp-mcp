@@ -4,7 +4,7 @@
 
 **Audit et décisions D01–D08 validés par Goulven le 2026-10-06 (« oui, go »), sans amendement.** Publication GitHub et création du projet Paperclip avec 24 tâches autorisées. L'implémentation n'est pas lancée par cette mise en place.
 
-Le transfert suit la procédure de 08 ; `paperclip-index.md` consignera le projet, les tâches et le SHA effectif du corpus.
+Transfert terminé : [index Paperclip](paperclip-index.md), 24 tâches non assignées en backlog et 36 dépendances vérifiées. Le dépôt public et le workspace Git sont liés ; l'index conserve le SHA effectif du corpus.
 
 ## Documents
 
@@ -19,6 +19,7 @@ Le transfert suit la procédure de 08 ; `paperclip-index.md` consignera le proje
 | [07 — Contrats](07-contrats-v01.md) | Choix précis pour coder : entrées, sorties, erreurs, limites et algorithmes |
 | [08 — Backlog](08-backlog.md) | 24 tâches, dépendances, livrables, critères et procédure Paperclip/GitHub |
 | [09 — Preuves](09-preuves-et-recette.md) | Questions EBP et gates de recette |
+| [Index Paperclip](paperclip-index.md) | Projet, workspace, correspondance Txx ↔ tâches et dépendances |
 
 ## Précédence
 

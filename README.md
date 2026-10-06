@@ -10,6 +10,7 @@ Projet de serveur MCP communautaire pour consulter les données EBP Cloud/SaaS v
 - [24 tâches de développement ordonnées](docs/08-backlog.md)
 - [Preuves fournisseur et recette](docs/09-preuves-et-recette.md)
 - [Instructions aux agents](AGENTS.md)
+- [Projet et tâches Paperclip](docs/paperclip-index.md)
 
 Dépôt : [`GoulvenF/ebp-mcp`](https://github.com/GoulvenF/ebp-mcp), licence MIT, paquet `@goulvenf/ebp-mcp`. La publication GitHub du corpus précède le développement ; la publication npm fait l'objet du jalon T24.
 
