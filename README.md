@@ -2,7 +2,7 @@
 
 Projet de serveur MCP communautaire pour consulter les données EBP Cloud/SaaS via des outils métier. Non affilié à EBP Informatique.
 
-**État : préparation de l'implémentation. Aucun serveur exécutable ni paquet npm publié dans ce travail.** L'analyse, les contrats et le plan ont été validés le 2026-10-06. Le corpus est publié sur GitHub ; les tâches de développement sont préparées dans Paperclip, sans lancement automatique.
+**État : implémentation v0.1 lancée dans Paperclip ; aucun serveur exécutable ni paquet npm publié dans ce dépôt à cette date.** L'analyse, les contrats et le plan ont été validés le 2026-10-06. Le corpus est publié sur GitHub ; T01 est en cours et T02–T14 attendent leurs dépendances.
 
 - [Corpus documentaire et ordre de lecture](docs/README.md)
 - [Audit : risques et décisions proposées](docs/06-audit.md)

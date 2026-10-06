@@ -4,7 +4,7 @@
 
 **Audit et décisions D01–D08 validés par Goulven le 2026-10-06 (« oui, go »), sans amendement.** Publication GitHub et création du projet Paperclip avec 24 tâches autorisées. L'implémentation n'est pas lancée par cette mise en place.
 
-Transfert terminé : [index Paperclip](paperclip-index.md), 24 tâches non assignées en backlog et 36 dépendances vérifiées. Le dépôt public et le workspace Git sont liés ; l'index conserve le SHA effectif du corpus.
+Transfert terminé : [index Paperclip](paperclip-index.md), 24 tâches dont T01–T14 attribuées au Lead Tech et T01 lancée, avec 36 dépendances vérifiées. Le dépôt public et le workspace Git sont liés ; l'index conserve le SHA effectif du corpus.
 
 ## Documents
 

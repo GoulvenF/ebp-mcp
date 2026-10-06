@@ -2,7 +2,7 @@
 
 ## État et ordre de lecture
 
-Projet au stade documentaire. **Audit et décisions D01–D08 validés par Goulven le 2026-10-06 (« oui, go »).** La publication GitHub du corpus et la création du projet et des 24 tâches Paperclip sont autorisées. Les tâches sont préparées en backlog, non assignées ; l'implémentation commencera lors de leur lancement explicite. Ne pas redemander validation pour les actions déjà autorisées.
+Projet en début d'implémentation. **Audit et décisions D01–D08 validés par Goulven le 2026-10-06 (« oui, go »).** La publication GitHub du corpus et la création du projet et des 24 tâches Paperclip sont autorisées. Le jalon v0.1 T01–T14 est confié au Lead Tech et T01 est lancée ; consulter [l'index Paperclip](docs/paperclip-index.md) pour l'état d'exécution. Ne pas redemander validation pour les actions déjà autorisées.
 
 Lire dans l'ordre :
 

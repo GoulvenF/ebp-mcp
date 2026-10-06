@@ -2,11 +2,12 @@
 
 Mise en place vérifiée le 2026-10-06, après validation de Goulven.
 
-- [Projet Paperclip](https://yamaka.me/GOU/projects/0c21c844-9ef9-4dd1-8684-7899734525ad) — statut `planned`.
+- [Projet Paperclip](https://yamaka.me/GOU/projects/0c21c844-9ef9-4dd1-8684-7899734525ad) — statut `in_progress`.
+- [Objectif v0.1](https://yamaka.me/GOU/goals/66e03261-214b-4cfe-8777-1db066e517e9) — actif, périmètre T01–T14. [Mandat](https://yamaka.me/GOU/approvals/5d1e7a2f-92d7-4853-9c3c-21c3baa267c5) approuvé, enregistré à partir de la validation explicite de Goulven le 2026-10-06.
 - [Dépôt GitHub](https://github.com/GoulvenF/ebp-mcp) — public, branche `main`, licence MIT.
 - [Corpus validé](https://github.com/GoulvenF/ebp-mcp/tree/b70b71b0792ec1bdc28d86ef0e642899464e85b5) — commit `b70b71b0792ec1bdc28d86ef0e642899464e85b5`.
 - Workspace primaire : `38307d5e-670c-49a3-83cf-e63676064229`, source Git `https://github.com/GoulvenF/ebp-mcp`, référence `main`, checkout géré par Paperclip.
-- Exécution prévue dans des worktrees isolés. Les 24 tâches sont non assignées en backlog ; aucun développement lancé lors de cet import.
+- Exécution prévue dans des worktrees isolés. À l'import initial, les 24 tâches étaient non assignées en backlog. T01–T14 ont ensuite été attribuées au Lead Tech à la demande de Goulven ; T15–T24 restent non assignées. T01 a été lancée le 2026-10-06 ; T02–T14 sont en statut `blocked` avec leurs dépendances enregistrées. Les statuts courants se lisent dans Paperclip.
 
 ## Correspondance des tâches
 
@@ -41,8 +42,8 @@ Chaque tâche contient la spécification complète, ses critères d'acceptation,
 
 ## Vérifications et maintenance
 
-Import relu depuis Paperclip : 24 tâches uniques, 36 dépendances conformes au backlog, descriptions intégrales, statuts backlog, aucune assignation et aucune exécution démarrée. Le workspace primaire pointe vers le dépôt et la branche attendus.
+Import relu depuis Paperclip : 24 tâches uniques, 36 dépendances conformes au backlog et descriptions intégrales. T01–T14 ont été attribuées au Lead Tech et liées à l'objectif v0.1 ; T01 est en cours. Le workspace primaire pointe vers le dépôt et la branche attendus.
 
-La première tâche disponible est [T01 / GOU-263](https://yamaka.me/GOU/issues/GOU-263). Une dépendance doit être intégrée sur `main` avant de lancer sa tâche dépendante.
+La première tâche lancée est [T01 / GOU-263](https://yamaka.me/GOU/issues/GOU-263). Paperclip ne réveille une tâche dépendante qu'une fois **tous** ses bloqueurs terminés et la synchronisation de leurs worktrees confirmée. Une dépendance doit être intégrée sur `main` avant de lancer sa tâche dépendante. La concurrence du Lead Tech est limitée à un run.
 
 Le commit de référence ci-dessus porte les exigences validées. Cet index est publié dans un commit distinct pour éviter toute autoréférence de SHA. Toute évolution des exigences doit modifier le corpus dans Git puis actualiser les descriptions et références des tâches concernées. Les inconnues EBP restent suivies dans [09](09-preuves-et-recette.md).
