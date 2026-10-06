@@ -19,13 +19,14 @@ Transfert terminé : [index Paperclip](paperclip-index.md), 24 tâches dont T01�
 | [07 — Contrats](07-contrats-v01.md) | Choix précis pour coder : entrées, sorties, erreurs, limites et algorithmes |
 | [08 — Backlog](08-backlog.md) | 24 tâches, dépendances, livrables, critères et procédure Paperclip/GitHub |
 | [09 — Preuves](09-preuves-et-recette.md) | Questions EBP et gates de recette |
+| [10 — Socle](10-socle-versions.md) | Décision D09 : versions figées du socle et bibliothèque décimale |
 | [Index Paperclip](paperclip-index.md) | Projet, workspace, correspondance Txx ↔ tâches et dépendances |
 
 ## Précédence
 
 07 définit le comportement précis ; 08 le découpage ; 09 les preuves exigées pour lever les hypothèses. 01–05 donnent le contexte et la cible fonctionnelle. 06 conserve la trace des erreurs et arbitrages. Le catalogue cible n'autorise pas à activer une capacité non documentée ou non prouvée.
 
-Les décisions D01–D08 et les contrats de 07 sont désormais applicables. Les preuves fournisseur et compléments de spécification des tâches ultérieures restent à obtenir. Les corrections factuelles et renvois dans les documents initiaux évitent de reproduire les erreurs identifiées.
+Les décisions D01–D08 et les contrats de 07 sont désormais applicables. D09 ([10](10-socle-versions.md)) fige les versions du socle et la bibliothèque décimale au titre de T01, sans modifier 07. Les preuves fournisseur et compléments de spécification des tâches ultérieures restent à obtenir. Les corrections factuelles et renvois dans les documents initiaux évitent de reproduire les erreurs identifiées.
 
 ## Traçabilité
 
