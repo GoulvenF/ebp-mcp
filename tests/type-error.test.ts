@@ -8,12 +8,22 @@ const tscBin = path.join(repoRoot, "node_modules", ".bin", "tsc");
 
 describe("gate typecheck", () => {
   it("détecte l'erreur de type volontaire de tests/fixtures/type-error.fixture.ts", () => {
-    expect(() =>
+    let output = "";
+    let exitCode = 0;
+    try {
       execFileSync(tscBin, ["-p", "tsconfig.fixture-check.json"], {
         cwd: repoRoot,
         stdio: "pipe",
-      }),
-    ).toThrow();
+      });
+    } catch (error) {
+      const execError = error as { status: number | null; stdout: Buffer };
+      exitCode = execError.status ?? 1;
+      output = execError.stdout.toString("utf8");
+    }
+
+    expect(exitCode).not.toBe(0);
+    expect(output).toContain("TS2322");
+    expect(output).toContain("tests/fixtures/type-error.fixture.ts");
   });
 
   it("ne compile jamais cette fixture via tsconfig.json (dépôt propre)", () => {

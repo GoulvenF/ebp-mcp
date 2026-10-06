@@ -1,5 +1,5 @@
 /** Familles d'adapters v0.1 (07 §1). */
-export type Famille = "compta" | "gescom";
+export type Famille = "hubbix-compta" | "hubbix-gescom";
 
 /** Environnement EBP ciblé (07 §2). */
 export type Environnement = "prod" | "preprod";

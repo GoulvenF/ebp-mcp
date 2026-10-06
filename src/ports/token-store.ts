@@ -1,10 +1,12 @@
+import type { Environnement } from "../domain/capabilities.js";
+
 /** État d'un enregistrement de tokens (07 §3). */
 export type EtatToken = "ready" | "refreshing" | "reauth_required";
 
 /** Identité de stockage = profil + environnement + empreinte du client ID (07 §2). */
 export interface IdentiteStockage {
   profil: string;
-  environnement: "prod" | "preprod";
+  environnement: Environnement;
   empreinteClientId: string;
 }
 
