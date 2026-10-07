@@ -10,10 +10,15 @@ export const ArticleSchema = z.object({
   prix_ht: DecimalStringSchema.nullable(),
   prix_ttc: DecimalStringSchema.nullable(),
   taux_tva: DecimalStringSchema.nullable(),
+  devise: z.string().nullable(),
   actif: z.boolean().nullable(),
 });
 
-/** Ligne d'un document de vente (`/sale-invoices/{id}` etc., 02 §3, champs non détaillés par 02). */
+/**
+ * Ligne d'un document de vente (`/sale-invoices/{id}` etc., 02 §3, champs non détaillés par 02).
+ * Pas de `devise` : la devise est portée par le document parent (`DocumentVenteSchema.devise`),
+ * non répétée par ligne dans 02.
+ */
 export const LigneDocumentSchema = z.object({
   id: z.string().nullable(),
   designation: z.string().nullable(),
@@ -42,6 +47,7 @@ export const DocumentVenteSchema = z.object({
   montant_ht: DecimalStringSchema.nullable(),
   montant_ttc: DecimalStringSchema.nullable(),
   montant_net_ttc: DecimalStringSchema.nullable(),
+  devise: z.string().nullable(),
   reste_du: DecimalStringSchema.nullable(),
   statut_comptable: z.enum(["sent_for_accounting", "accounted", "entry_generation_failure", "inconnu"]).nullable(),
   lignes: z.array(LigneDocumentSchema).nullable(),
@@ -60,6 +66,7 @@ export const EcheanceSchema = z.object({
   document_statut: z.string().nullable(),
   mode_paiement: z.string().nullable(),
   montant: DecimalStringSchema.nullable(),
+  devise: z.string().nullable(),
   reste_du: DecimalStringSchema.nullable(),
 });
 
@@ -70,6 +77,7 @@ export const ReglementSchema = z.object({
   tiers_nom: z.string().nullable(),
   tiers_id: z.null(),
   montant: DecimalStringSchema.nullable(),
+  devise: z.string().nullable(),
   montant_restant_a_affecter: DecimalStringSchema.nullable(),
   mode_paiement_libelle: z.string().nullable(),
   reference: z.string().nullable(),

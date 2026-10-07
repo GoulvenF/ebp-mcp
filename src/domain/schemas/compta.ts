@@ -16,7 +16,11 @@ export const TiersSchema = z.object({
   telephone: z.string().nullable(),
 });
 
-/** Ligne d'une écriture CPT (`/entries/{uuid}`, A26 : `id` distinct de `ecriture_id`). */
+/**
+ * Ligne d'une écriture CPT (`/entries/{uuid}`, A26 : `id` distinct de `ecriture_id`).
+ * Pas de `devise` : 02 ne documente aucun champ devise à ce niveau (écritures du dossier,
+ * devise de tenue unique, non multi-devise dans le périmètre v0.1).
+ */
 export const LigneEcritureSchema = z.object({
   id: z.string(),
   ecriture_id: z.string(),
@@ -39,7 +43,12 @@ export const EcritureSchema = z.object({
   lignes: z.array(LigneEcritureSchema),
 });
 
-/** `/bank-transactions` (02 §2). */
+/**
+ * `/bank-transactions` (02 §2). `status` source documenté 🟡 (0/1/2), hors de la liste
+ * d'énumérations ✅ (preuve E07, T15) : `statut` reste `"inconnu"` sans conversion tant que le
+ * mapping 0/1/2 n'est pas prouvé (07 §6, A26), et `statut_source` conserve le code brut.
+ * Pas de `devise` : 02 ne documente aucun champ devise pour les transactions bancaires.
+ */
 export const TransactionBancaireSchema = z.object({
   id: z.string().nullable(),
   libelle: z.string().nullable(),
@@ -50,6 +59,7 @@ export const TransactionBancaireSchema = z.object({
   credit: DecimalStringSchema.nullable(),
   reference: z.string().nullable(),
   statut: z.enum(["rapproche", "non_rapproche", "inconnu"]).nullable(),
+  statut_source: z.string().nullable(),
 });
 
 /** Agrégat de balance par compte (07 §8) : `solde = debit − credit`. */
@@ -60,9 +70,10 @@ export const LigneBalanceSchema = z.object({
   solde: DecimalStringSchema,
   solde_debiteur: DecimalStringSchema,
   solde_crediteur: DecimalStringSchema,
+  devise: z.string().nullable(),
 });
 
-/** Ligne de grand livre d'un compte (07 §6 `grand_livre`). */
+/** Ligne de grand livre d'un compte (07 §6 `grand_livre`). Pas de `devise` : même motif que `LigneEcritureSchema`. */
 export const LigneGrandLivreSchema = z.object({
   id: z.string(),
   compte: CompteSchema,
