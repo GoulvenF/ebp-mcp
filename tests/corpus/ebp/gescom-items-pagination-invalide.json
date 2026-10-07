@@ -1,0 +1,43 @@
+{
+  "id": "gescom-items-pagination-invalide",
+  "famille": "hubbix-gescom",
+  "route": "/items",
+  "forme_enveloppe": "elements",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /items",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "synthetique",
+  "observe_le": null,
+  "preuves_liees": ["E06"],
+  "couverture": ["pagination-invalide"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/items",
+    "parametres": { "skip": 50, "take": 50 }
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "elements": [
+        { "id": "art-1", "code": "ART001", "label": "Déjà vu", "itemType": "ServiceItem", "priceVatExcluded": "10.00", "priceVatIncluded": "12.00", "vatRate": "20", "itemStatus": 0 }
+      ],
+      "take": 50,
+      "skip": 0,
+      "total": 1
+    }
+  },
+  "attentes": {
+    "description": "Deuxième appel avec `skip=50` dont la source renvoie `skip=0` et le même élément que la page précédente : compteur qui n'avance pas, page répétée ⇒ `UPSTREAM_PAGINATION_INVALID` (07 §5), jamais un redémarrage silencieux.",
+    "resultats": [],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": {
+      "code": "UPSTREAM_PAGINATION_INVALID",
+      "message": "La pagination fournisseur n'a pas progressé entre deux pages.",
+      "action": "Signaler l'incident ; ne pas relancer automatiquement le même parcours."
+    }
+  },
+  "notes": "Le `skip` renvoyé par le fournisseur (0) ne correspond pas au `skip` demandé (50) et le contenu est identique à la page précédente."
+}

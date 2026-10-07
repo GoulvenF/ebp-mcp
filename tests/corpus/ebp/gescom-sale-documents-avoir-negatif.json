@@ -1,0 +1,68 @@
+{
+  "id": "gescom-sale-documents-avoir-negatif",
+  "famille": "hubbix-gescom",
+  "route": "/sale-documents",
+  "forme_enveloppe": "elements",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /sale-documents (SaleCredit)",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": ["E10"],
+  "couverture": ["avoir-negatif"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/sale-documents",
+    "parametres": { "skip": 0, "take": 50 }
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "elements": [
+        {
+          "id": "doc-7",
+          "documentType": "SaleCredit",
+          "documentStatus": 1,
+          "name": "Client Démo",
+          "date": "2026-03-12",
+          "number": "AV2026-003",
+          "totalAmountVatExcluded": "-20.00",
+          "totalAmountVatIncluded": "-24.00",
+          "netAmountVatIncluded": "-24.00",
+          "dueAmount": "0.00",
+          "accountingTransferStatus": 1
+        }
+      ],
+      "take": 50,
+      "skip": 0,
+      "total": 1
+    }
+  },
+  "attentes": {
+    "description": "Avoir dont le montant source est déjà négatif (A01) : conservé négatif, sans seconde inversion de signe.",
+    "resultats": [
+      {
+        "id": "doc-7",
+        "type": "SaleCredit",
+        "statut": "valide",
+        "tiers_nom": "Client Démo",
+        "tiers_id": null,
+        "date": "2026-03-12",
+        "numero": "AV2026-003",
+        "montant_ht": "-20.00",
+        "montant_ttc": "-24.00",
+        "montant_net_ttc": "-24.00",
+        "devise": null,
+        "reste_du": "0.00",
+        "statut_comptable": "accounted",
+        "lignes": null
+      }
+    ],
+    "pagination": { "renvoyes": 1, "total": null, "total_source": 1, "hasMore": false, "curseur": null },
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Convention de signe des avoirs (E10, préuve non apportée côté fournisseur) : ici `deja_negatif`, `normaliserSigneAvoir` ne doit pas être appelée une seconde fois."
+}

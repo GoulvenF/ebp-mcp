@@ -1,0 +1,59 @@
+{
+  "id": "compta-tiers-liste-data",
+  "famille": "hubbix-compta",
+  "route": "/auxiliary-accounts",
+  "forme_enveloppe": "data",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §2 Hubbix Comptabilité TPE — /auxiliary-accounts",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": ["E06"],
+  "couverture": ["enveloppe-data", "champs-null"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/auxiliary-accounts",
+    "parametres": { "skip": 0, "take": 50 }
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "data": [
+        {
+          "uuid": "550e8400-e29b-41d4-a716-446655440000",
+          "name": "Client Démo",
+          "number": "0004100",
+          "vatNumber": null,
+          "siret": null,
+          "isActive": null,
+          "types": null
+        }
+      ],
+      "take": 50,
+      "skip": 0,
+      "totalRecords": 1
+    }
+  },
+  "attentes": {
+    "description": "Tiers CPT, champs non garantis par 02 (numéro de TVA, SIRET, actif, contact) laissés à null plutôt qu'inventés.",
+    "resultats": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "compte": "0004100",
+        "nom": "Client Démo",
+        "types": null,
+        "numero_tva": null,
+        "siret": null,
+        "actif": null,
+        "email": null,
+        "telephone": null
+      }
+    ],
+    "pagination": { "renvoyes": 1, "total": null, "total_source": 1, "hasMore": false, "curseur": null },
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Compte conservé tel quel (\"0004100\"), sans retrait du zéro de tête (A26)."
+}

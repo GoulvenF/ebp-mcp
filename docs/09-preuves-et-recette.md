@@ -22,6 +22,18 @@
 | E14 | Calculs analytiques | Cas facture finale/acompte/avoir/annulation/paiement partiel ; références métier attendues indépendantes du mapper | T21/T22 | inconnu |
 | E15 | Distribution | CGU applicables, droits d'utilisation des exemples, identité package disponible, fichiers licence/mentions | T24 | à vérifier |
 
+## Fixtures du corpus liées aux preuves (T03b)
+
+Le corpus `tests/corpus/ebp/` ([lecture](../tests/corpus/README.md)) assume certaines incertitudes
+fournisseur via `preuves_liees`. Un mock valide uniquement notre implémentation du contrat, pas la
+réponse réelle d'EBP — ce tableau ne change pas l'état des lignes ci-dessus.
+
+| Preuve | Fixtures du corpus |
+|---|---|
+| E06 | `compta-tiers-liste-data`, `compta-lines-entries`, `gescom-items-page-vide`, `gescom-items-pagination-invalide` |
+| E07 | `compta-search-entries-tableau-nu` |
+| E10 | `gescom-sale-documents-avoir-negatif`, `gescom-sale-commitments-fenetre-un-jour` |
+
 ## Format de preuve
 
 Créer un fichier `docs/evidence/E<numero>-<sujet>.md` : date, famille, environnement, version API si disponible, hypothèse, requête **sans secret**, résultat synthétisé/anonymisé, conclusion étroite, limitations, fixtures et tests associés. Pas d'e-mail client, SIRET réel, nom de société cliente, IBAN, token, clé, code OAuth, HAR ni dump brut. Remplacer les IDs de façon cohérente ; préserver les relations et les cas aux limites.
