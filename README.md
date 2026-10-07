@@ -15,3 +15,14 @@ Projet de serveur MCP communautaire pour consulter les données EBP Cloud/SaaS v
 Dépôt : [`GoulvenF/ebp-mcp`](https://github.com/GoulvenF/ebp-mcp), licence MIT, paquet `@goulvenf/ebp-mcp`. La publication GitHub du corpus précède le développement ; la publication npm fait l'objet du jalon T24.
 
 Périmètre cible : Hubbix Comptabilité, Hubbix Gestion Commerciale, SaaS Gestion Commerciale et SaaS Bâtiment. Première livraison prévue : socle TypeScript/Node 24, transport stdio, 17 outils Hubbix testés sur mocks. Identifiants EBP fournis par l'utilisateur ; lecture seule. Les données exposées au client MCP peuvent être transmises au fournisseur de modèle qu'il utilise.
+
+## Développement
+
+Paquet non publié (`"private": true`). Depuis un clone, après `npm ci` :
+
+```sh
+npm ci              # installation reproductible depuis package-lock.json
+npm run typecheck   # tsc --noEmit sur src/ et tests/
+npm test            # vitest run (déclenche le build si nécessaire)
+npm run build       # tsc -p tsconfig.build.json → dist/
+```

@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["tests/fixtures/type-error.fixture.ts"],
+  "exclude": []
+}

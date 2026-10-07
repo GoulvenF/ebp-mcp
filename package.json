@@ -1,0 +1,33 @@
+{
+  "name": "@goulvenf/ebp-mcp",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Serveur MCP communautaire EBP SaaS, lecture seule (développement, non publié).",
+  "license": "MIT",
+  "engines": {
+    "node": "^24.0.0",
+    "npm": ">=11"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "pretypecheck": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "pretest": "npm run build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "big.js": "7.0.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/big.js": "7.0.0",
+    "@types/node": "24.19.1",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}
