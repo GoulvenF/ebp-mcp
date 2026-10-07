@@ -50,6 +50,17 @@ describe("précédence : sélection du profil", () => {
       expect.objectContaining({ erreur: expect.objectContaining({ code: "CONFIG_INVALID" }) }),
     );
   });
+
+  it.each(["__proto__", "constructor", "toString"])(
+    "nom de profil issu de la chaîne de prototypes (%s) ⇒ CONFIG_INVALID, jamais une propriété héritée",
+    (nomProfil) => {
+      expect(() => resoudreConfig(entreesBase({ cli: { profile: nomProfil } }))).toThrowError(
+        expect.objectContaining({
+          erreur: expect.objectContaining({ code: "CONFIG_INVALID", details: { profil: nomProfil } }),
+        }),
+      );
+    },
+  );
 });
 
 describe("précédence : environnement", () => {
@@ -196,6 +207,19 @@ describe("précédence : reserve du groupe de quota", () => {
     delete fichier.quotaGroups.grp.reserve;
     const config = resoudreConfig(entreesBase({ fichier }));
     expect(config.groupesQuota.get("grp" as Identifiant)?.reserve).toBe(500);
+  });
+
+  it("EBP_QUOTA_RESERVE qui franchit reserve < maxPerDay ⇒ CONFIG_INVALID nommant la variable et le groupe", () => {
+    expect(() =>
+      resoudreConfig(entreesBase({ variablesEnv: { quotaReserve: 99999 } })),
+    ).toThrowError(
+      expect.objectContaining({
+        erreur: expect.objectContaining({
+          code: "CONFIG_INVALID",
+          details: expect.objectContaining({ variable: "EBP_QUOTA_RESERVE", groupe: "grp" }),
+        }),
+      }),
+    );
   });
 });
 

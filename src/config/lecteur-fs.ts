@@ -33,12 +33,20 @@ export function creerLecteurFs(): LecteurConfig {
   };
 }
 
+function profilPorteUnSecret(profil: unknown): boolean {
+  if (typeof profil !== "object" || profil === null) return false;
+  if ("clientSecret" in profil || "subscriptionKey" in profil) return true;
+  const parFamille = (profil as { subscriptionByFamily?: Record<string, unknown> }).subscriptionByFamily;
+  if (typeof parFamille !== "object" || parFamille === null) return false;
+  return Object.values(parFamille).some(
+    (s) => typeof s === "object" && s !== null && "key" in s,
+  );
+}
+
 function contientUnSecret(contenu: string): boolean {
   try {
     const data = JSON.parse(contenu) as { profiles?: Record<string, unknown> };
-    return Object.values(data.profiles ?? {}).some(
-      (p) => typeof p === "object" && p !== null && ("clientSecret" in p || "subscriptionKey" in p),
-    );
+    return Object.values(data.profiles ?? {}).some(profilPorteUnSecret);
   } catch {
     return false;
   }

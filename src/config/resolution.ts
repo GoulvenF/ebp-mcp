@@ -4,6 +4,7 @@ import type { DossiersParEnvironnement } from "./dossiers.js";
 import { normaliserDossiers } from "./dossiers.js";
 import { erreurConfigInvalide } from "./errors.js";
 import type { Identifiant } from "./identifiers.js";
+import { estIdentifiant } from "./identifiers.js";
 import type { VariablesEnv } from "./env.js";
 import type { Journal } from "./journal.js";
 import { estRedirectUriLoopback, schemaFichierConfig } from "./schema.js";
@@ -64,10 +65,21 @@ function detailsDepuisZod(erreur: z.ZodError): Record<string, unknown> {
   };
 }
 
-function versGroupeQuota(brut: GroupeQuotaBrut, reserveOverride: number | undefined): GroupeQuota {
+function versGroupeQuota(
+  nom: string,
+  brut: GroupeQuotaBrut,
+  reserveOverride: number | undefined,
+): GroupeQuota {
+  const reserve = reserveOverride ?? brut.reserve;
+  if (reserveOverride !== undefined && reserve >= brut.maxPerDay) {
+    throw erreurConfigInvalide(
+      `EBP_QUOTA_RESERVE (${reserveOverride}) rend le groupe de quota "${nom}" invalide : reserve doit être strictement inférieure à maxPerDay (${brut.maxPerDay}).`,
+      { variable: "EBP_QUOTA_RESERVE", groupe: nom },
+    );
+  }
   return {
     maxPerDay: brut.maxPerDay,
-    reserve: reserveOverride ?? brut.reserve,
+    reserve,
     minIntervalMs: brut.minIntervalMs,
     resetTimezone: brut.resetTimezone,
   };
@@ -91,7 +103,10 @@ export function resoudreConfig(entrees: EntreesResolution): ConfigResolue {
   const fichier = resultat.data;
 
   const nomProfil = entrees.cli.profile ?? entrees.variablesEnv.profile ?? "default";
-  const profilTrouve = fichier.profiles[nomProfil];
+  const profilTrouve =
+    estIdentifiant(nomProfil) && Object.hasOwn(fichier.profiles, nomProfil)
+      ? fichier.profiles[nomProfil]
+      : undefined;
   if (profilTrouve === undefined) {
     throw erreurConfigInvalide(`Profil "${nomProfil}" absent de config.json.`, { profil: nomProfil });
   }
@@ -121,7 +136,7 @@ export function resoudreConfig(entrees: EntreesResolution): ConfigResolue {
     if (brut === undefined) {
       throw erreurConfigInvalide(`Groupe de quota "${nom}" non déclaré.`, { groupe: nom });
     }
-    groupesQuota.set(nom as Identifiant, versGroupeQuota(brut, entrees.variablesEnv.quotaReserve));
+    groupesQuota.set(nom as Identifiant, versGroupeQuota(nom, brut, entrees.variablesEnv.quotaReserve));
   }
 
   const dossiers = normaliserDossiers(profilBrut);
