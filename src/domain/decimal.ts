@@ -42,3 +42,70 @@ export function decimalCompare(a: DecimalString, b: DecimalString): -1 | 0 | 1 {
 export function decimalRoundHalfUp(value: DecimalString, decimalPlaces: number): DecimalString {
   return toBig(value).round(decimalPlaces, Big.roundHalfUp).toFixed(decimalPlaces);
 }
+
+const LEXEME_DECIMAL = /^-?\d+(\.\d+)?$/;
+
+/**
+ * Parse un lexème décimal sans jamais passer par `Number`/`parseFloat` (07 §5) : un entier ou
+ * décimal au-delà de la précision IEEE-754 garde tous ses chiffres. Entrée non exploitable ⇒
+ * `null`, jamais `"0"` (une donnée inconnue n'est pas un zéro).
+ */
+export function decimalDepuisLexeme(lexeme: unknown): DecimalString | null {
+  if (typeof lexeme !== "string") {
+    return null;
+  }
+  if (!LEXEME_DECIMAL.test(lexeme)) {
+    return null;
+  }
+  return toBig(lexeme).toFixed();
+}
+
+/** Somme exacte. Liste vide ⇒ `"0"`, zéro d'agrégation vide, pas une donnée inconnue. */
+export function decimalSomme(valeurs: readonly DecimalString[]): DecimalString {
+  return valeurs.reduce((acc, valeur) => toBig(acc).plus(toBig(valeur)).toFixed(), "0");
+}
+
+export function decimalNegate(valeur: DecimalString): DecimalString {
+  return toBig(valeur).times(-1).toFixed();
+}
+
+export function decimalEstNegatif(valeur: DecimalString): boolean {
+  return toBig(valeur).lt(0);
+}
+
+/**
+ * Inverse le signe d'un montant d'avoir au plus une fois (A01). `"deja_negatif"` renvoie le
+ * montant tel quel (idempotent, même négatif) ; `"positif_a_inverser"` inverse une seule fois.
+ * Aucune agrégation de chiffre d'affaires n'est construite ici.
+ */
+export function normaliserSigneAvoir(
+  montant: DecimalString,
+  convention: "deja_negatif" | "positif_a_inverser",
+): DecimalString {
+  if (convention === "deja_negatif") {
+    return toBig(montant).toFixed();
+  }
+  return decimalNegate(montant);
+}
+
+/**
+ * Deux décimales, half-up à l'opposé de zéro, destiné à une fin de calcul (07 §5/D09). Ne pas
+ * utiliser entre deux étapes intermédiaires : `decimalAdd` conserve la précision complète.
+ */
+export function formaterMontantEur(valeur: DecimalString): DecimalString {
+  return decimalRoundHalfUp(valeur, 2);
+}
+
+/**
+ * `echelle: null` ⇒ aucun arrondi supposé hors EUR (07 §5) : la valeur canonique est renvoyée
+ * inchangée. `echelle` fourni ⇒ arrondi half-up à ce nombre de décimales.
+ */
+export function formaterMontantDevise(
+  valeur: DecimalString,
+  echelle: number | null,
+): DecimalString {
+  if (echelle === null) {
+    return toBig(valeur).toFixed();
+  }
+  return decimalRoundHalfUp(valeur, echelle);
+}
