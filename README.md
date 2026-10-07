@@ -16,6 +16,15 @@ Dépôt : [`GoulvenF/ebp-mcp`](https://github.com/GoulvenF/ebp-mcp), licence MIT
 
 Périmètre cible : Hubbix Comptabilité, Hubbix Gestion Commerciale, SaaS Gestion Commerciale et SaaS Bâtiment. Première livraison prévue : socle TypeScript/Node 24, transport stdio, 17 outils Hubbix testés sur mocks. Identifiants EBP fournis par l'utilisateur ; lecture seule. Les données exposées au client MCP peuvent être transmises au fournisseur de modèle qu'il utilise.
 
+## Configuration
+
+`config.json` vit sous `$XDG_CONFIG_HOME/ebp-mcp` (sinon `~/.config/ebp-mcp`). Voir
+[`examples/config.demo.json`](examples/config.demo.json) pour un profil avec des dossiers
+synthétiques en `prod` et en `preprod`. Secrets (`clientSecret`, `subscriptionKey`) recommandés en
+variables d'environnement plutôt qu'en fichier — voir [`.env.example`](.env.example). La précédence
+normative (CLI > env > profil > défaut) est décrite dans [07 §2](docs/07-contrats-v01.md) et vérifiée
+par la table de tests `tests/config/precedence.test.ts`.
+
 ## Développement
 
 Paquet non publié (`"private": true`). Depuis un clone, après `npm ci` :
