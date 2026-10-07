@@ -159,7 +159,7 @@ export const schemaFichierConfig = z
   .strict()
   .superRefine((fichier, ctx) => {
     for (const [nomProfil, profil] of Object.entries(fichier.profiles)) {
-      if (!(profil.quotaGroup in fichier.quotaGroups)) {
+      if (!Object.hasOwn(fichier.quotaGroups, profil.quotaGroup)) {
         ctx.addIssue({
           code: "custom",
           message: `quotaGroup "${profil.quotaGroup}" non déclaré dans quotaGroups`,
@@ -167,7 +167,7 @@ export const schemaFichierConfig = z
         });
       }
       for (const [famille, sub] of Object.entries(profil.subscriptionByFamily ?? {})) {
-        if (!(sub.quotaGroup in fichier.quotaGroups)) {
+        if (!Object.hasOwn(fichier.quotaGroups, sub.quotaGroup)) {
           ctx.addIssue({
             code: "custom",
             message: `quotaGroup "${sub.quotaGroup}" non déclaré dans quotaGroups`,

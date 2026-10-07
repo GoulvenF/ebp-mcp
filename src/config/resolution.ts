@@ -132,7 +132,9 @@ export function resoudreConfig(entrees: EntreesResolution): ConfigResolue {
   ]);
   const groupesQuota = new Map<Identifiant, GroupeQuota>();
   for (const nom of nomsGroupesUtilises) {
-    const brut = fichier.quotaGroups[nom];
+    // `Object.hasOwn` et non un accès direct : un nom comme `constructor` satisfait
+    // RE_IDENTIFIANT et serait sinon résolu sur la chaîne de prototypes (décision 3).
+    const brut = Object.hasOwn(fichier.quotaGroups, nom) ? fichier.quotaGroups[nom] : undefined;
     if (brut === undefined) {
       throw erreurConfigInvalide(`Groupe de quota "${nom}" non déclaré.`, { groupe: nom });
     }

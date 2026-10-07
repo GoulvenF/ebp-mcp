@@ -71,6 +71,22 @@ describe("schema.ts : intégrité croisée", () => {
     expect(valide(f)).toBe(false);
   });
 
+  it("groupe de quota nommé comme un membre de Object.prototype refusé", () => {
+    // `constructor` satisfait RE_IDENTIFIANT : le contrôle d'intégrité doit porter sur
+    // les propriétés propres de quotaGroups, pas sur la chaîne de prototypes.
+    const f = fichierBase() as any;
+    f.profiles.default.quotaGroup = "constructor";
+    expect(valide(f)).toBe(false);
+  });
+
+  it("groupe de quota d'une famille nommé comme un membre de Object.prototype refusé", () => {
+    const f = fichierBase() as any;
+    f.profiles.default.subscriptionByFamily = {
+      "hubbix-compta": { key: "k", quotaGroup: "constructor" },
+    };
+    expect(valide(f)).toBe(false);
+  });
+
   it("defaultDossier.prod pointant un alias absent refusé", () => {
     const f = fichierBase() as any;
     f.profiles.default.defaultDossier.prod = "alias-absent";
