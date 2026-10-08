@@ -64,5 +64,5 @@
     "avertissements": [],
     "erreur": null
   },
-  "notes": "Convention de signe des avoirs (E10, préuve non apportée côté fournisseur) : ici `deja_negatif`, `normaliserSigneAvoir` ne doit pas être appelée une seconde fois."
+  "notes": "Convention de signe des avoirs (E10, preuve non apportée côté fournisseur) : ici `deja_negatif`, `normaliserSigneAvoir` ne doit pas être appelée une seconde fois."
 }

@@ -75,7 +75,9 @@ function parcourirChaines(valeur: unknown, visiteur: (chaine: string) => void): 
   }
 }
 
-const FORME_DECIMAL = /^-?\d+(\.\d+)?$/;
+// Toute chaîne numérique, exponentielle incluse : `isValidDecimalString` (Big.js) accepte
+// « 1.2e3 », donc la canonicité doit être testée sur un filtre plus large que la forme attendue.
+const FORME_NUMERIQUE = /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/;
 const FORME_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const PATRONS_SECRETS: RegExp[] = [
@@ -129,9 +131,14 @@ describe("corpus EBP (tests/corpus/ebp) — provenance et comportement", () => {
   });
 
   it("point 3 — chaînes décimales des attentes valides/canoniques, dates civiles valides", () => {
+    // Garde-fou : le filtre doit rester capable d'attraper une notation exponentielle, sinon
+    // l'assertion de canonicité ci-dessous ne serait jamais atteinte.
+    expect(FORME_NUMERIQUE.test("1.2e3")).toBe(true);
+    expect(isValidDecimalString("1.2e3")).toBe(true);
+
     for (const fixture of corpus) {
       parcourirChaines(fixture.attentes, (chaine) => {
-        if (FORME_DECIMAL.test(chaine)) {
+        if (FORME_NUMERIQUE.test(chaine)) {
           expect(isValidDecimalString(chaine), `fixture ${fixture.id} : "${chaine}"`).toBe(true);
           expect(chaine, `fixture ${fixture.id} : notation exponentielle interdite`).not.toMatch(/e/i);
         }
