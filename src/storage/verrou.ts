@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { hostname } from "node:os";
 import { join } from "node:path";
 import type { Clock } from "../ports/clock.js";
@@ -129,12 +129,15 @@ export function creerGestionnaireVerrous(deps: DependancesGestionnaireVerrous): 
   const hoteLocal = hostname();
 
   /**
-   * Relit `chemin` avec un bref recul borné : entre `ouvrirExclusif` et la fin de l'écriture du
-   * contenu par son propriétaire légitime, un concurrent peut observer un fichier vide ou tronqué
-   * qui n'est pas réellement périmé. On ne conclut à un fichier illisible/incomplet (donc périmé)
-   * qu'après plusieurs lectures infructueuses, jamais sur une seule lecture.
+   * Relit `chemin` avec un bref recul borné : entre la création du `.lock` par son propriétaire
+   * légitime et sa publication (voir {@link tenterCreation}, lien physique depuis un temporaire
+   * fsyncé), un concurrent ne devrait plus jamais observer de contenu partiel. Ce recul reste une
+   * seconde ceinture, plus la garantie : la garantie vient de la visibilité atomique du `.lock`.
    */
-  async function lireContenuVerrouAvecRecul(chemin: string): Promise<ContenuVerrou | null | "absent"> {
+  async function lireContenuVerrouAvecRecul(
+    chemin: string,
+  ): Promise<{ texte: string; contenu: ContenuVerrou | null } | "absent"> {
+    let dernierTexte = "";
     for (let tentative = 0; tentative < 5; tentative += 1) {
       let texte: string;
       try {
@@ -145,24 +148,26 @@ export function creerGestionnaireVerrous(deps: DependancesGestionnaireVerrous): 
         }
         throw depuisErreurFichier(erreur, chemin);
       }
+      dernierTexte = texte;
       const contenu = analyserContenuVerrou(texte);
       if (contenu !== null) {
-        return contenu;
+        return { texte, contenu };
       }
       if (tentative < 4) {
         await clock.wait(10);
       }
     }
-    return null;
+    return { texte: dernierTexte, contenu: null };
   }
 
   async function recupererOuReboucler(nom: string, chemin: string): Promise<"reboucler" | "attendre"> {
-    const contenu = await lireContenuVerrouAvecRecul(chemin);
-    if (contenu === "absent") {
+    const lu = await lireContenuVerrouAvecRecul(chemin);
+    if (lu === "absent") {
       return "reboucler";
     }
+    const { texte, contenu } = lu;
     if (contenu === null) {
-      await tenterRecuperation(chemin, "corrupt");
+      await tenterRecuperation(chemin, texte);
       return "reboucler";
     }
 
@@ -171,33 +176,93 @@ export function creerGestionnaireVerrous(deps: DependancesGestionnaireVerrous): 
     }
 
     if (pidEstMort(contenu.pid)) {
-      await tenterRecuperation(chemin, contenu.jeton);
+      await tenterRecuperation(chemin, texte);
       return "reboucler";
     }
 
     return "attendre";
   }
 
-  async function tenterRecuperation(chemin: string, suffixe: string): Promise<void> {
-    const peremption = `${chemin}.perime-${suffixe}`;
+  /**
+   * Récupération d'un verrou périmé (hôte local, pid mort prouvé, ou contenu illisible) — revue
+   * T04 : une simple lecture puis `renommer` inconditionnel laisse une fenêtre entre l'observation
+   * et l'action où un autre prétendant a pu déjà récupérer et un nouveau propriétaire vivant
+   * s'installer ; le `renommer` tardif supprimerait alors le `.lock` **neuf** de ce propriétaire.
+   *
+   * Revendication exclusive : seul le gagnant d'un `ouvrirExclusif` sur un fichier de revendication
+   * dérivé du contenu observé (`texteObserve`, par hachage) a le droit d'agir sur cette récupération
+   * précise. Il relit ensuite `chemin` et ne retire le `.lock` que si son contenu est **encore
+   * identique** à `texteObserve` : un contenu différent signifie qu'un nouveau propriétaire est déjà
+   * en place, et n'est jamais effacé.
+   */
+  async function tenterRecuperation(chemin: string, texteObserve: string): Promise<void> {
+    const empreinte = createHash("sha256").update(texteObserve).digest("hex").slice(0, 16);
+    const revendication = `${chemin}.perime-${empreinte}`;
+
+    let descripteur;
     try {
-      await operations.renommer(chemin, peremption);
+      descripteur = await operations.ouvrirExclusif(revendication, 0o600);
     } catch (erreur) {
-      if ((erreur as NodeJS.ErrnoException).code === "ENOENT") {
+      if ((erreur as NodeJS.ErrnoException).code === "EEXIST") {
         return;
       }
       throw depuisErreurFichier(erreur, chemin);
     }
-    await operations.supprimer(peremption).catch(() => undefined);
+
+    try {
+      await operations.fermer(descripteur);
+
+      let texteActuel: string;
+      try {
+        texteActuel = await operations.lireFichier(chemin);
+      } catch (erreur) {
+        if ((erreur as NodeJS.ErrnoException).code === "ENOENT") {
+          return;
+        }
+        throw depuisErreurFichier(erreur, chemin);
+      }
+      if (texteActuel !== texteObserve) {
+        return;
+      }
+
+      await operations.supprimer(chemin).catch((erreur) => {
+        if ((erreur as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw depuisErreurFichier(erreur, chemin);
+        }
+      });
+    } finally {
+      await operations.supprimer(revendication).catch(() => undefined);
+    }
   }
 
+  /**
+   * Publie `chemin` de façon atomique : écrit `contenu` dans un temporaire co-localisé, le fsync,
+   * puis le rend visible par un lien physique (`lier`, `EEXIST` si `chemin` existe déjà) — revue
+   * T04, point 2. Un `.lock` visible est donc toujours complet : plus de fenêtre où un concurrent
+   * observerait un contenu partiel entre la création du fichier et la fin de l'écriture.
+   */
   async function tenterCreation(chemin: string, contenu: string): Promise<void> {
-    const descripteur = await operations.ouvrirExclusif(chemin, 0o600);
+    const temp = join(
+      repertoire,
+      `.tmp-verrou-${randomBytes(8).toString("hex")}-${process.pid}`,
+    );
+    const descripteur = await operations.ouvrirExclusif(temp, 0o600);
     try {
-      await operations.ecrireTout(descripteur, contenu);
-      await operations.synchroniser(descripteur);
+      try {
+        await operations.ecrireTout(descripteur, contenu);
+        await operations.synchroniser(descripteur);
+      } finally {
+        await operations.fermer(descripteur).catch(() => undefined);
+      }
+    } catch (erreur) {
+      await operations.supprimer(temp).catch(() => undefined);
+      throw erreur;
+    }
+
+    try {
+      await operations.lier(temp, chemin);
     } finally {
-      await operations.fermer(descripteur);
+      await operations.supprimer(temp).catch(() => undefined);
     }
   }
 

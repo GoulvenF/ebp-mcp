@@ -17,6 +17,11 @@ export interface DependancesTokenStoreFichier {
  * cycle de vie des tokens appartient à T06. L'enregistrement persiste tous les champs de
  * `EnregistrementToken` tels que fournis par l'appelant ; ne jamais faire traverser une enveloppe
  * `Secret` par ce store, elle se sérialiserait en `"[redacted]"`.
+ *
+ * **Une instance est liée à une seule identité de stockage** : `chemin` est le `tokens.json`
+ * déjà résolu pour cette identité (07 §2), `read`/`write`/`clear` l'ignorent jamais mais ne
+ * couvrent que ce fichier. L'appelant (T06) doit créer une instance par identité, jamais en
+ * réutiliser une pour une identité différente.
  */
 export function creerTokenStoreFichier(deps: DependancesTokenStoreFichier): TokenStore {
   return {

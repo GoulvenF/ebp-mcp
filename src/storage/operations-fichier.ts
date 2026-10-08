@@ -1,4 +1,4 @@
-import { chmod, mkdir, open, readdir, readFile, rename, stat, unlink, type FileHandle } from "node:fs/promises";
+import { chmod, link, mkdir, open, readdir, readFile, rename, stat, unlink, type FileHandle } from "node:fs/promises";
 import { dirname } from "node:path";
 
 /** Descripteur opaque renvoyé par {@link OperationsFichier.ouvrirExclusif}. */
@@ -22,6 +22,8 @@ export interface OperationsFichier {
   synchroniser(descripteur: Descripteur): Promise<void>;
   fermer(descripteur: Descripteur): Promise<void>;
   renommer(ancien: string, nouveau: string): Promise<void>;
+  /** Lien physique ; échoue avec `EEXIST` si `nouveau` existe déjà (décision 7 révisée, revue T04). */
+  lier(ancien: string, nouveau: string): Promise<void>;
   supprimer(chemin: string): Promise<void>;
   lireFichier(chemin: string): Promise<string>;
   statut(chemin: string): Promise<StatutFichier>;
@@ -62,6 +64,9 @@ export function creerOperationsFichierNode(): OperationsFichier {
     },
     async renommer(ancien, nouveau) {
       await rename(ancien, nouveau);
+    },
+    async lier(ancien, nouveau) {
+      await link(ancien, nouveau);
     },
     async supprimer(chemin) {
       await unlink(chemin);

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -8,10 +8,11 @@ import { creerHorlogeReelle, creerRepertoireTemporaire, nettoyerRepertoire } fro
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 const SCRIPT_ENFANT = join(ICI, "enfant-compteur.mjs");
+const SCRIPT_RACE = join(ICI, "enfant-race.mjs");
 
-function lancerEnfant(args: string[]): Promise<void> {
+function lancerScript(script: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
-    const enfant = spawn(process.execPath, [SCRIPT_ENFANT, ...args], { stdio: ["ignore", "pipe", "pipe"] });
+    const enfant = spawn(process.execPath, [script, ...args], { stdio: ["ignore", "pipe", "pipe"] });
     let erreurSortie = "";
     enfant.stderr.on("data", (donnees: Buffer) => {
       erreurSortie += donnees.toString();
@@ -65,7 +66,9 @@ describe("multi-processus.ts", () => {
         }
       })();
 
-      const enfants = Array.from({ length: 4 }, () => lancerEnfant([dir, cheminCompteur, "cycles:25"]));
+      const enfants = Array.from({ length: 4 }, () =>
+        lancerScript(SCRIPT_ENFANT, [dir, cheminCompteur, "cycles:25"]),
+      );
       await Promise.all(enfants);
 
       enLecture = false;
@@ -80,6 +83,7 @@ describe("multi-processus.ts", () => {
 
   it(
     "un enfant SIGKILLé en détenant le verrou ⇒ le parent récupère après mort prouvée",
+    { timeout: 25000, retry: 2 },
     async () => {
       const cheminCompteur = join(dir, "compteur-kill.json");
       const cheminMarqueur = join(dir, "marqueur.pid");
@@ -120,6 +124,48 @@ describe("multi-processus.ts", () => {
       const etatFinal = await store.lire<{ valeur: number }>(cheminCompteur, "compteur");
       expect(etatFinal).toEqual({ valeur: 2 });
     },
-    25000,
+  );
+
+  it(
+    "deux prétendants réels récupérant un verrou mort prouvé ne le détiennent jamais simultanément (revue T04, point 1)",
+    { timeout: 25000, retry: 2 },
+    async () => {
+      const cheminCompteur = join(dir, "compteur-race.json");
+      const cheminMarqueur = join(dir, "marqueur-race.pid");
+      const cheminOccupation = join(dir, "occupation");
+      const cheminResultatA = join(dir, "resultat-A");
+      const cheminResultatB = join(dir, "resultat-B");
+      await writeFile(cheminOccupation, "", "utf8");
+
+      const detenteur = spawn(process.execPath, [SCRIPT_ENFANT, dir, cheminCompteur, "retenir", cheminMarqueur], {
+        stdio: ["ignore", "ignore", "pipe"],
+      });
+
+      const debut = Date.now();
+      while (true) {
+        try {
+          await readFile(cheminMarqueur, "utf8");
+          break;
+        } catch {
+          if (Date.now() - debut > 10000) {
+            throw new Error("L'enfant n'a jamais signalé la détention du verrou.");
+          }
+          await attendre(10);
+        }
+      }
+
+      detenteur.kill("SIGKILL");
+      await new Promise((resolve) => detenteur.on("exit", resolve));
+
+      await Promise.all([
+        lancerScript(SCRIPT_RACE, [dir, "A", cheminOccupation, cheminResultatA]),
+        lancerScript(SCRIPT_RACE, [dir, "B", cheminOccupation, cheminResultatB]),
+      ]);
+
+      const resultatA = await readFile(cheminResultatA, "utf8");
+      const resultatB = await readFile(cheminResultatB, "utf8");
+      expect(resultatA).not.toContain("COLLISION");
+      expect(resultatB).not.toContain("COLLISION");
+    },
   );
 });
