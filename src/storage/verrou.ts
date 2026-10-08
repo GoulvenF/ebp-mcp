@@ -184,6 +184,33 @@ export function creerGestionnaireVerrous(deps: DependancesGestionnaireVerrous): 
   }
 
   /**
+   * Une revendication (`.perime-<empreinte>`) peut elle-même rester orpheline si son créateur est
+   * tué entre `ouvrirExclusif` et le `finally` qui la supprime (revue T04, 2ᵉ passe) : sans ce
+   * nettoyage, tout prétendant suivant obtient `EEXIST` pour toujours et ne récupère jamais le
+   * verrou périmé — seule la boucle bornée par `deadline` (voir {@link acquisitionFichier}) évite
+   * alors un blocage infini, mais chaque tentative resterait vaine. La revendication porte donc le
+   * pid/hôte de son créateur : si ce créateur est mort, elle est supprimée ici plutôt que par TTL.
+   */
+  async function nettoyerRevendicationOrpheline(revendication: string): Promise<void> {
+    let texte: string;
+    try {
+      texte = await operations.lireFichier(revendication);
+    } catch {
+      return;
+    }
+    let brut: { pid?: unknown; hostname?: unknown };
+    try {
+      brut = JSON.parse(texte) as { pid?: unknown; hostname?: unknown };
+    } catch {
+      brut = {};
+    }
+    if (typeof brut.pid === "number" && brut.hostname === hoteLocal && !pidEstMort(brut.pid)) {
+      return;
+    }
+    await operations.supprimer(revendication).catch(() => undefined);
+  }
+
+  /**
    * Récupération d'un verrou périmé (hôte local, pid mort prouvé, ou contenu illisible) — revue
    * T04 : une simple lecture puis `renommer` inconditionnel laisse une fenêtre entre l'observation
    * et l'action où un autre prétendant a pu déjà récupérer et un nouveau propriétaire vivant
@@ -204,12 +231,18 @@ export function creerGestionnaireVerrous(deps: DependancesGestionnaireVerrous): 
       descripteur = await operations.ouvrirExclusif(revendication, 0o600);
     } catch (erreur) {
       if ((erreur as NodeJS.ErrnoException).code === "EEXIST") {
+        await nettoyerRevendicationOrpheline(revendication);
         return;
       }
       throw depuisErreurFichier(erreur, chemin);
     }
 
     try {
+      await operations.ecrireTout(
+        descripteur,
+        JSON.stringify({ pid: process.pid, hostname: hoteLocal }),
+      );
+      await operations.synchroniser(descripteur);
       await operations.fermer(descripteur);
 
       let texteActuel: string;
@@ -277,6 +310,15 @@ export function creerGestionnaireVerrous(deps: DependancesGestionnaireVerrous): 
     while (true) {
       if (estAnnule(signal)) {
         throw erreurVerrouAnnule(nom);
+      }
+      /**
+       * Bornée à chaque itération, y compris sur le chemin « reboucler » (revue T04, 2ᵉ passe) :
+       * une revendication orpheline (voir {@link nettoyerRevendicationOrpheline}) peut sinon faire
+       * reboucler indéfiniment avant même d'atteindre le contrôle de deadline ci-dessous, qui
+       * n'était auparavant exécuté que sur le chemin « attendre ».
+       */
+      if (clock.now().getTime() >= deadline.getTime()) {
+        throw erreurVerrouDeadlineDepassee(nom);
       }
       const contenu = JSON.stringify({
         pid: process.pid,

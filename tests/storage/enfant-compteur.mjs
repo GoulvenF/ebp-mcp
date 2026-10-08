@@ -54,8 +54,15 @@ async function retenirPuisBloquer() {
   }
   // Volontairement jamais de release() : ce processus est destiné à être SIGKILLé pendant qu'il
   // détient le verrou, pour prouver la récupération après mort prouvée du détenteur.
+  //
+  // Revue T04 (2ᵉ passe) : une Promise jamais résolue, seule, ne retient aucun handle de la boucle
+  // d'événements Node — le process sortait de lui-même en code 0 juste après avoir écrit le
+  // marqueur, et le test SIGKILL ne tuait donc jamais aucun détenteur vivant. Un minuteur répété et
+  // non `unref()` retient explicitement le processus en vie jusqu'au signal.
   await new Promise(() => {
-    /* bloque indéfiniment */
+    setInterval(() => {
+      /* ne fait rien : seule sa présence retient la boucle d'événements */
+    }, 60000);
   });
 }
 

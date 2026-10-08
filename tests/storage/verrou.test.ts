@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join } from "node:path";
@@ -102,6 +103,37 @@ describe("verrou.ts", () => {
     expect(contenu.pid).toBe(process.pid);
     await lock.release();
   });
+
+  it(
+    "revue T04 (2ᵉ passe) : revendication de récupération orpheline (créateur mort) ⇒ récupération quand même, sans attendre la deadline",
+    async () => {
+      const chemin = join(dir, "auth.lock");
+      const pidMort = pidTermine();
+      const contenuVerrouMort = JSON.stringify({
+        pid: pidMort,
+        hostname: hostname(),
+        acquisLe: new Date().toISOString(),
+        jeton: "mort",
+      });
+      await writeFile(chemin, contenuVerrouMort, "utf8");
+
+      const empreinte = createHash("sha256").update(contenuVerrouMort).digest("hex").slice(0, 16);
+      const pidCreateurMort = pidTermine();
+      await writeFile(
+        `${chemin}.perime-${empreinte}`,
+        JSON.stringify({ pid: pidCreateurMort, hostname: hostname() }),
+        "utf8",
+      );
+
+      const verrous = gestionnaire();
+      const debut = Date.now();
+      const lock = await verrous.acquire("auth", new Date(Date.now() + 5000));
+      expect(Date.now() - debut).toBeLessThan(2000);
+      const contenu = JSON.parse(await readFile(chemin, "utf8"));
+      expect(contenu.pid).toBe(process.pid);
+      await lock.release();
+    },
+  );
 
   it("hostname étranger ⇒ jamais volé, erreur explicite", async () => {
     const chemin = join(dir, "auth.lock");

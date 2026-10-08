@@ -83,7 +83,7 @@ describe("multi-processus.ts", () => {
 
   it(
     "un enfant SIGKILLé en détenant le verrou ⇒ le parent récupère après mort prouvée",
-    { timeout: 25000, retry: 2 },
+    { timeout: 25000 },
     async () => {
       const cheminCompteur = join(dir, "compteur-kill.json");
       const cheminMarqueur = join(dir, "marqueur.pid");
@@ -128,7 +128,7 @@ describe("multi-processus.ts", () => {
 
   it(
     "deux prétendants réels récupérant un verrou mort prouvé ne le détiennent jamais simultanément (revue T04, point 1)",
-    { timeout: 25000, retry: 2 },
+    { timeout: 25000 },
     async () => {
       const cheminCompteur = join(dir, "compteur-race.json");
       const cheminMarqueur = join(dir, "marqueur-race.pid");
