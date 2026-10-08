@@ -1,0 +1,38 @@
+{
+  "id": "gescom-vat-rates-tableau-nu",
+  "famille": "hubbix-gescom",
+  "route": "/vat-rates",
+  "forme_enveloppe": "tableau_nu",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /vat-rates",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": [],
+  "couverture": ["enveloppe-tableau-nu"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/vat-rates",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": [
+      { "label": "Taux normal", "rate": "20", "territoriality": 0, "isDefault": true },
+      { "label": "Taux réduit", "rate": "5.5", "territoriality": 0, "isDefault": false }
+    ]
+  },
+  "attentes": {
+    "description": "Référentiel GC des taux de TVA renvoyé en tableau nu (02 §1), sans wrapper de pagination : résultat d'agrégat, pas de curseur.",
+    "resultats": [
+      { "libelle": "Taux normal", "taux": "20", "territorialite": "france", "defaut": true },
+      { "libelle": "Taux réduit", "taux": "5.5", "territorialite": "france", "defaut": false }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Référentiel complet renvoyé en une fois (pas de pagination côté fournisseur pour cette route)."
+}

@@ -1,0 +1,32 @@
+{
+  "id": "gescom-items-page-vide",
+  "famille": "hubbix-gescom",
+  "route": "/items",
+  "forme_enveloppe": "elements",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /items",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "synthetique",
+  "observe_le": null,
+  "preuves_liees": ["E06"],
+  "couverture": ["page-vide"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/items",
+    "parametres": { "skip": 100, "take": 50 }
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": { "elements": [], "take": 50, "skip": 100, "total": 0 }
+  },
+  "attentes": {
+    "description": "Page sans élément : ni erreur, ni total inventé — le parcours peut se terminer normalement (07 §5).",
+    "resultats": [],
+    "pagination": { "renvoyes": 0, "total": null, "total_source": 0, "hasMore": false, "curseur": null },
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Page vide cohérente avec hasMore=false ; ne pas transformer ce cas en échec."
+}

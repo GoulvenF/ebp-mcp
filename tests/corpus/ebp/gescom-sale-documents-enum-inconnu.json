@@ -1,0 +1,68 @@
+{
+  "id": "gescom-sale-documents-enum-inconnu",
+  "famille": "hubbix-gescom",
+  "route": "/sale-documents",
+  "forme_enveloppe": "elements",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /sale-documents (SaleDocumentType)",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "synthetique",
+  "observe_le": null,
+  "preuves_liees": [],
+  "couverture": ["enum-inconnu"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/sale-documents",
+    "parametres": { "skip": 0, "take": 50 }
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "elements": [
+        {
+          "id": "doc-99",
+          "documentType": "SaleProforma",
+          "documentStatus": 1,
+          "name": "Client Démo",
+          "date": "2026-03-10",
+          "number": "P2026-001",
+          "totalAmountVatExcluded": "500.00",
+          "totalAmountVatIncluded": "600.00",
+          "netAmountVatIncluded": "600.00",
+          "dueAmount": "600.00",
+          "accountingTransferStatus": 1
+        }
+      ],
+      "take": 50,
+      "skip": 0,
+      "total": 1
+    }
+  },
+  "attentes": {
+    "description": "Valeur `documentType` hors de l'énumération connue (A26) : `type` retombe sur `inconnu`, jamais une valeur inventée, avec avertissement citant la valeur source.",
+    "resultats": [
+      {
+        "id": "doc-99",
+        "type": "inconnu",
+        "statut": "valide",
+        "tiers_nom": "Client Démo",
+        "tiers_id": null,
+        "date": "2026-03-10",
+        "numero": "P2026-001",
+        "montant_ht": "500.00",
+        "montant_ttc": "600.00",
+        "montant_net_ttc": "600.00",
+        "devise": null,
+        "reste_du": "600.00",
+        "statut_comptable": "accounted",
+        "lignes": null
+      }
+    ],
+    "pagination": { "renvoyes": 1, "total": null, "total_source": 1, "hasMore": false, "curseur": null },
+    "avertissements": ["Valeur enum inconnue reçue de la source : \"SaleProforma\""],
+    "erreur": null
+  },
+  "notes": "`SaleProforma` n'existe pas dans `SaleDocumentType` (02 §3) : aucun mapping inventé, repli explicite + avertissement (A26)."
+}

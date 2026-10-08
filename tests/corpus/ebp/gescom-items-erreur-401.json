@@ -1,0 +1,40 @@
+{
+  "id": "gescom-items-erreur-401",
+  "famille": "hubbix-gescom",
+  "route": "/items",
+  "forme_enveloppe": "erreur",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §1 Environnements & transverse — Erreurs (format Hubbix GC)",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": [],
+  "couverture": ["erreur-fournisseur"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/items",
+    "parametres": { "skip": 0, "take": 50 }
+  },
+  "reponse_ebp": {
+    "statut_http": 401,
+    "corps": {
+      "status": 401,
+      "errorCode": "Auth.InvalidToken",
+      "message": "JWT invalide ou expiré."
+    }
+  },
+  "attentes": {
+    "description": "401 fournisseur après au plus un rejeu (07 §3) : erreur stable, message assaini, sans URL ni contenu métier brut.",
+    "resultats": [],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": {
+      "code": "AUTH_REQUIRED",
+      "message": "Authentification requise ou expirée.",
+      "action": "Relancer une authentification (login) puis réessayer."
+    }
+  },
+  "notes": "Le message et le code source (`Auth.InvalidToken`) ne sont pas réexposés tels quels : seul le code stable 07 §7 et un message générique sortent."
+}

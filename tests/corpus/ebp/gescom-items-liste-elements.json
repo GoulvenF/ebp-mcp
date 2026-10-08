@@ -1,0 +1,60 @@
+{
+  "id": "gescom-items-liste-elements",
+  "famille": "hubbix-gescom",
+  "route": "/items",
+  "forme_enveloppe": "elements",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /items",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": [],
+  "couverture": ["enveloppe-elements", "decimal-precision"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/items",
+    "parametres": { "skip": 0, "take": 50 }
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "elements": [
+        {
+          "id": "art-1",
+          "code": "ART001",
+          "label": "Prestation de précision",
+          "itemType": "ServiceItem",
+          "priceVatExcluded": "1545.0000000000000000000000000",
+          "priceVatIncluded": "1854.0000000000000000000000000",
+          "vatRate": "20",
+          "itemStatus": 0
+        }
+      ],
+      "take": 50,
+      "skip": 0,
+      "total": 1
+    }
+  },
+  "attentes": {
+    "description": "Article GC dont le prix unitaire conserve sa précision source (~28 chiffres), au-delà de la précision Number (A02).",
+    "resultats": [
+      {
+        "id": "art-1",
+        "code": "ART001",
+        "libelle": "Prestation de précision",
+        "type": "service",
+        "prix_ht": "1545.0000000000000000000000000",
+        "prix_ttc": "1854.0000000000000000000000000",
+        "taux_tva": "20",
+        "devise": null,
+        "actif": true
+      }
+    ],
+    "pagination": { "renvoyes": 1, "total": null, "total_source": 1, "hasMore": false, "curseur": null },
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Aucun passage par Number : le lexème décimal source est repris sans arrondi intermédiaire (07 §5)."
+}

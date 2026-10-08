@@ -1,0 +1,62 @@
+{
+  "id": "compta-lines-entries",
+  "famille": "hubbix-compta",
+  "route": "/lines-entries",
+  "forme_enveloppe": "linesEntries",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §2 Hubbix Comptabilité TPE — /lines-entries",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": ["E06"],
+  "couverture": ["enveloppe-lines-entries"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/lines-entries",
+    "parametres": { "startDate": "2026-03-01", "endDate": "2026-03-31", "skip": 0, "take": 50 }
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "linesEntries": [
+        {
+          "entry": { "journal": "VE", "date": "2026-03-05", "entryMode": "Validé" },
+          "generalAccount": "411000",
+          "auxiliaryAccount": null,
+          "label": "Vente mars",
+          "debit": "100.00",
+          "credit": null,
+          "piece": "FA2026-010",
+          "document": null,
+          "deadline": "2026-04-05",
+          "lettering": "A"
+        }
+      ],
+      "take": 50,
+      "skip": 0
+    }
+  },
+  "attentes": {
+    "description": "Ligne d'écriture CPT mappée vers le modèle T01 : `id` de ligne distinct de `ecriture_id` (A26), échéance et lettrage conservés.",
+    "resultats": [
+      {
+        "id": "411000-1",
+        "ecriture_id": "ecriture-2026-03-05-VE-1",
+        "compte_general": "411000",
+        "compte_tiers": null,
+        "libelle": "Vente mars",
+        "debit": "100.00",
+        "credit": null,
+        "piece": "FA2026-010",
+        "echeance": "2026-04-05",
+        "lettrage": "A"
+      }
+    ],
+    "pagination": { "renvoyes": 1, "total": null, "total_source": null, "hasMore": false, "curseur": null },
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Le wrapper source n'expose pas d'`id` de ligne stable ; T09 devra documenter la construction retenue. `ecriture_id` ici est un identifiant de substitution hors scope de cette tâche."
+}
