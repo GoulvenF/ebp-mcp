@@ -1,0 +1,60 @@
+{
+  "id": "gescom-items-decimal-precision",
+  "famille": "hubbix-gescom",
+  "route": "/items",
+  "forme_enveloppe": "elements",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — décimaux sérialisés avec ~28 chiffres",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "synthetique",
+  "observe_le": null,
+  "preuves_liees": [],
+  "couverture": ["decimal-precision"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/items",
+    "parametres": { "skip": 0, "take": 50 }
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "elements": [
+        {
+          "id": "art-28",
+          "code": "ART028",
+          "label": "Article haute précision",
+          "itemType": "GoodItem",
+          "priceVatExcluded": "1234567890123456789012345.6789",
+          "priceVatIncluded": "1481481468148148146814814.4567",
+          "vatRate": "19.9999999999999999999999999",
+          "itemStatus": 0
+        }
+      ],
+      "take": 50,
+      "skip": 0,
+      "total": 1
+    }
+  },
+  "attentes": {
+    "description": "Lexèmes à ~28 chiffres significatifs (pas seulement des zéros de fin, 02 §3) : `prix_ht`, `prix_ttc` et `taux_tva` restitués exactement, qu'un passage par `Number` arrondirait silencieusement.",
+    "resultats": [
+      {
+        "id": "art-28",
+        "code": "ART028",
+        "libelle": "Article haute précision",
+        "type": "bien",
+        "prix_ht": "1234567890123456789012345.6789",
+        "prix_ttc": "1481481468148148146814814.4567",
+        "taux_tva": "19.9999999999999999999999999",
+        "devise": null,
+        "actif": true
+      }
+    ],
+    "pagination": { "renvoyes": 1, "total": null, "total_source": 1, "hasMore": false, "curseur": null },
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "`Number(\"19.9999999999999999999999999\")` vaudrait `20` : le lexème décimal doit traverser `decimalDepuisLexeme` sans jamais passer par `Number` (07 §5)."
+}

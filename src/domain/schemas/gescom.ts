@@ -53,6 +53,37 @@ export const DocumentVenteSchema = z.object({
   lignes: z.array(LigneDocumentSchema).nullable(),
 });
 
+/** `/vat-rates`, tableau nu (02 §3) ; `taux` conserve le lexème décimal source. */
+export const TauxTvaSchema = z.object({
+  libelle: z.string().nullable(),
+  taux: DecimalStringSchema.nullable(),
+  territorialite: z.enum([
+    "france",
+    "corse",
+    "dom",
+    "import_export",
+    "intracommunautaire",
+    "monaco",
+    "hors_france",
+    "inconnu",
+  ]),
+  defaut: z.boolean().nullable(),
+});
+
+/** `/customers/{id}` (02 §3) ; pas de `GET /customers` (liste) à ce niveau — fiche par ID direct. */
+export const ClientGcSchema = z.object({
+  id: z.string(),
+  code: z.string().nullable(),
+  nom: z.string().nullable(),
+  siret: z.string().nullable(),
+  numero_tva_intracommunautaire: z.string().nullable(),
+  groupe_id: z.string().nullable(),
+  condition_reglement_id: z.string().nullable(),
+  solde_du: DecimalStringSchema.nullable(),
+  solde_echu: DecimalStringSchema.nullable(),
+  devise: z.string().nullable(),
+});
+
 /** `/sale-commitments` (échéances, 02 §3). */
 export const EcheanceSchema = z.object({
   id: z.string(),

@@ -5,8 +5,12 @@ import { DateCivileSchema, ErreurMetierSchema, PaginationSchema } from "../domai
 export const FAMILLES_FIXTURE = ["hubbix-compta", "hubbix-gescom"] as const;
 export type FamilleFixture = (typeof FAMILLES_FIXTURE)[number];
 
-/** Les trois formes de wrapper documentées par 02, le tableau nu et le cas d'échec. */
-export const FORMES_ENVELOPPE = ["data", "elements", "linesEntries", "tableau_nu", "erreur"] as const;
+/**
+ * Les trois formes de wrapper documentées par 02, le tableau nu, le cas d'échec, et `fiche`
+ * (objet nu sans enveloppe de liste : détail article, fiche client — ajouté en T10a pour les
+ * routes `/customers/{id}`, `/items/goods|services/{id}`, jamais renommé ni retiré depuis).
+ */
+export const FORMES_ENVELOPPE = ["data", "elements", "linesEntries", "tableau_nu", "erreur", "fiche"] as const;
 export type FormeEnveloppe = (typeof FORMES_ENVELOPPE)[number];
 
 export const STATUTS_FIXTURE = ["synthetique", "documente", "observe"] as const;
@@ -124,5 +128,5 @@ export function determinerFormeEnveloppeReelle(corps: unknown): FormeEnveloppe |
   if (typeof objet.title === "string" && Array.isArray(objet.errors)) {
     return "erreur";
   }
-  return null;
+  return "fiche";
 }

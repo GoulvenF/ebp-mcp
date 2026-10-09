@@ -1,0 +1,53 @@
+{
+  "id": "gescom-item-service-detail",
+  "famille": "hubbix-gescom",
+  "route": "/items/services/{id}",
+  "forme_enveloppe": "fiche",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /items/services/{id}",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": [],
+  "couverture": ["champs-null"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/items/services/srv-7",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "id": "srv-7",
+      "code": "SRV007",
+      "label": null,
+      "itemType": "ServiceItem",
+      "priceVatExcluded": "250.00",
+      "priceVatIncluded": "300.00",
+      "vatRate": "20",
+      "itemStatus": 1
+    }
+  },
+  "attentes": {
+    "description": "Détail d'un article service (`itemType: ServiceItem` → `service`) via la route dédiée (A13), distincte de celle des biens : `label` explicitement `null`, `itemStatus: 1` (Inactive) → `actif: false`.",
+    "resultats": [
+      {
+        "id": "srv-7",
+        "code": "SRV007",
+        "libelle": null,
+        "type": "service",
+        "prix_ht": "250",
+        "prix_ttc": "300",
+        "taux_tva": "20",
+        "devise": null,
+        "actif": false
+      }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Route `/items/services/{id}` distincte de `/items/goods/{id}` : aucune confusion de chemin possible, le type vient de l'appelant (A13)."
+}
