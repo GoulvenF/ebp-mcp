@@ -4,8 +4,9 @@ import type { LockManager } from "../ports/lock-manager.js";
 import type { EnregistrementToken, IdentiteStockage, TokenStore } from "../ports/token-store.js";
 import type { Secret } from "../config/secret.js";
 import type { StoreJson, JournalStockage } from "../storage/store-json.js";
+import type { CategorieEchecToken } from "./client-token.js";
 import { echangerToken, REFRESH_ESTIME_MS } from "./client-token.js";
-import { erreurAuthRequise } from "./errors.js";
+import { erreurAuthIndisponible, erreurAuthRequise } from "./errors.js";
 import {
   apresReservation,
   commitAutorise,
@@ -25,6 +26,14 @@ export const MARGE_EXPIRATION_MS = 60_000;
 
 /** Pas d'attente entre deux relectures de l'observateur d'un refresh concurrent. */
 const PAS_ATTENTE_OBSERVATEUR_MS = 100;
+
+/**
+ * Fenêtre de secours pour le verrou de restauration (budget/deadline/annulation épuisés) : ce
+ * nettoyage ne dépend plus de la deadline ni du signal de l'appelant, puisque ceux-ci sont
+ * justement ce qui vient d'être épuisé — il doit réussir malgré tout pour éviter de laisser le
+ * marqueur `refreshing` en place sans raison.
+ */
+const DELAI_NETTOYAGE_MARQUEUR_MS = 5_000;
 
 export interface ProfilAuth {
   readonly clientId: string;
@@ -65,7 +74,26 @@ type DecisionSousVerrou =
   | { readonly type: "frais"; readonly enregistrement: EnregistrementToken }
   | { readonly type: "attendre" }
   | { readonly type: "abandonne" }
-  | { readonly type: "devenir_refresher"; readonly refreshToken: string; readonly generation: number };
+  | {
+      readonly type: "devenir_refresher";
+      readonly refreshToken: string;
+      readonly generation: number;
+      readonly enregistrementPrecedent: EnregistrementToken;
+    };
+
+/** Fenêtre déjà épuisée (signal, budget ou deadline) : réplique les contrôles de `echangerToken` pour sortir avant toute mutation du store (décision 3). */
+function categorieFenetreEpuisee(clock: Clock, parametres: ParametresCycle): CategorieEchecToken | null {
+  if (parametres.signal?.aborted === true) return "annule";
+  if (parametres.budgetRestant < 1) return "budget_epuise";
+  if (parametres.deadline.getTime() - clock.now().getTime() <= 0) return "deadline_depassee";
+  return null;
+}
+
+function messageFenetreEpuisee(categorie: CategorieEchecToken): string {
+  if (categorie === "annule") return "Appel annulé avant l'échange du token ; aucune requête n'a été émise.";
+  if (categorie === "budget_epuise") return "Budget de tentatives épuisé avant l'échange du token ; aucune requête n'a été émise.";
+  return "Deadline dépassée avant l'échange du token ; aucune requête n'a été émise.";
+}
 
 async function attendreTransitionReady(deps: DependancesCycle, parametres: ParametresCycle): Promise<void> {
   while (true) {
@@ -104,6 +132,26 @@ async function marquerReauthSiToujoursEnCours(
     const relu = await deps.tokenStore.read(deps.identite);
     if (relu !== null && relu.generation === generation && relu.state === "refreshing") {
       await deps.tokenStore.write(deps.identite, { ...relu, state: "reauth_required" });
+    }
+  });
+}
+
+/**
+ * Restaure sous verrou l'enregistrement `ready` précédent si le marqueur `refreshing` de cette
+ * génération est toujours en place (relecture avant écriture, comme `marquerReauthSiToujoursEnCours`).
+ * Utilisé quand la fenêtre d'exécution s'épuise entre l'écriture du marqueur et l'échange réseau :
+ * aucun appel n'a été émis, donc rien n'est indéterminé — l'ancien état `ready` reste valide.
+ */
+async function restaurerReadySiToujoursEnCours(
+  deps: DependancesCycle,
+  generation: number,
+  enregistrementPrecedent: EnregistrementToken,
+): Promise<void> {
+  const deadlineNettoyage = new Date(deps.clock.now().getTime() + DELAI_NETTOYAGE_MARQUEUR_MS);
+  await sousVerrouIdentite(deps.verrous, deps.nomVerrou, deadlineNettoyage, undefined, deps.journal, async () => {
+    const relu = await deps.tokenStore.read(deps.identite);
+    if (relu !== null && relu.generation === generation && relu.state === "refreshing") {
+      await deps.tokenStore.write(deps.identite, enregistrementPrecedent);
     }
   });
 }
@@ -151,7 +199,17 @@ export async function assurerTokenValide(
           return { type: "abandonne" };
         }
 
-        // `ready` mais expiré (ou proche expiration) : devenir l'unique rafraîchisseur.
+        // `ready` mais expiré (ou proche expiration) : devenir l'unique rafraîchisseur, sauf si
+        // la fenêtre d'exécution est déjà épuisée (décision 3 : erreur avant émission, aucune
+        // réservation ni marqueur ne doit être écrit dans ce cas).
+        const categorieFenetre = categorieFenetreEpuisee(deps.clock, parametres);
+        if (categorieFenetre !== null) {
+          throw erreurAuthIndisponible(
+            messageFenetreEpuisee(categorieFenetre),
+            "Réessayer l'appel avec un budget ou un délai suffisant.",
+          );
+        }
+
         const etatGenerations = await lireGenerations({ store: deps.store, chemin: deps.cheminGenerations });
         const nouvelEtatGenerations = apresReservation(etatGenerations);
         await ecrireGenerations({ store: deps.store, chemin: deps.cheminGenerations }, nouvelEtatGenerations);
@@ -163,7 +221,12 @@ export async function assurerTokenValide(
           generation,
         };
         await deps.tokenStore.write(deps.identite, refreshing);
-        return { type: "devenir_refresher", refreshToken: actuel.refreshToken, generation };
+        return {
+          type: "devenir_refresher",
+          refreshToken: actuel.refreshToken,
+          generation,
+          enregistrementPrecedent: actuel,
+        };
       },
     );
 
@@ -206,6 +269,14 @@ export async function assurerTokenValide(
     );
 
     if (!resultat.ok) {
+      if (resultat.categorie === "budget_epuise" || resultat.categorie === "deadline_depassee" || resultat.categorie === "annule") {
+        // Aucune requête n'est partie (07 §4) : état déterminé, l'ancien `ready` reste valide.
+        await restaurerReadySiToujoursEnCours(deps, decision.generation, decision.enregistrementPrecedent);
+        throw erreurAuthIndisponible(
+          messageFenetreEpuisee(resultat.categorie),
+          "Réessayer l'appel avec un budget ou un délai suffisant.",
+        );
+      }
       await marquerReauthSiToujoursEnCours(deps, parametres, decision.generation);
       throw erreurAuthRequise(
         resultat.categorie === "invalid_grant"

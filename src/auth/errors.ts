@@ -53,3 +53,15 @@ export function erreurArgumentInvalide(
 ): ErreurAuth {
   return creer("INVALID_ARGUMENT", message, action, details);
 }
+
+/**
+ * Fenêtre d'exécution épuisée (budget, deadline ou annulation) avant toute émission réseau vers
+ * l'hôte identité (décision 3, 07 §4) : état déterminé, aucune réauthentification n'est requise.
+ */
+export function erreurAuthIndisponible(
+  message: string,
+  action: string,
+  details?: Record<string, unknown>,
+): ErreurAuth {
+  return creer("UPSTREAM_UNAVAILABLE", message, action, details);
+}

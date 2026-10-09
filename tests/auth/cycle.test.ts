@@ -117,6 +117,105 @@ describe("cycle.ts — rafraîchissement unique", () => {
     }
   });
 
+  it("budget épuisé avant émission : aucun échange, ancien ready conservé, UPSTREAM_UNAVAILABLE", async () => {
+    const dir = await creerRepertoireTemporaire();
+    try {
+      const clock = creerHorlogeControlee(DEPART);
+      const stockage = construireDependancesStockage(dir, clock);
+      const avant = enregistrementExpire(1, clock);
+      await stockage.tokenStore.write(stockage.identite, avant);
+      await seedGenerations(stockage, { schemaVersion: 1, derniereReservee: 1, revoqueeJusqua: 0 });
+      const transport = creerTransportFactice([]);
+
+      await expect(
+        assurerTokenValide(
+          { transport, clock, profilAuth: { clientId: "c" }, ...stockage },
+          { budgetRestant: 0, deadline: new Date(clock.now().getTime() + 60_000) },
+        ),
+      ).rejects.toMatchObject({ erreur: { code: "UPSTREAM_UNAVAILABLE" } });
+
+      expect(transport.appels).toHaveLength(0);
+      const persiste = await stockage.tokenStore.read(stockage.identite);
+      expect(persiste).toEqual(avant);
+      const generations = await stockage.store.lire(stockage.cheminGenerations, "auth-generations");
+      expect(generations).toMatchObject({ derniereReservee: 1 });
+    } finally {
+      await nettoyerRepertoire(dir);
+    }
+  });
+
+  it("marqueur refreshing déjà écrit puis signal annulé avant l'échange (race) : restauration du ready précédent, aucun échange, UPSTREAM_UNAVAILABLE", async () => {
+    const dir = await creerRepertoireTemporaire();
+    try {
+      const clock = creerHorlogeControlee(DEPART);
+      const stockage = construireDependancesStockage(dir, clock);
+      const avant = enregistrementExpire(1, clock);
+      await stockage.tokenStore.write(stockage.identite, avant);
+      await seedGenerations(stockage, { schemaVersion: 1, derniereReservee: 1, revoqueeJusqua: 0 });
+      const transport = creerTransportFactice([]);
+      const controleur = new AbortController();
+      const tokenStoreInstrumente = {
+        ...stockage.tokenStore,
+        async write(identite: unknown, enregistrement: EnregistrementToken) {
+          await stockage.tokenStore.write(identite as never, enregistrement);
+          if (enregistrement.state === "refreshing") {
+            // Simule une annulation survenue entre l'écriture du marqueur et l'échange réseau.
+            controleur.abort();
+          }
+        },
+      };
+
+      await expect(
+        assurerTokenValide(
+          { transport, clock, profilAuth: { clientId: "c" }, ...stockage, tokenStore: tokenStoreInstrumente },
+          { budgetRestant: 30, deadline: new Date(clock.now().getTime() + 60_000), signal: controleur.signal },
+        ),
+      ).rejects.toMatchObject({ erreur: { code: "UPSTREAM_UNAVAILABLE" } });
+
+      expect(transport.appels).toHaveLength(0);
+      const persiste = await stockage.tokenStore.read(stockage.identite);
+      expect(persiste).toEqual(avant);
+    } finally {
+      await nettoyerRepertoire(dir);
+    }
+  });
+
+  it("marqueur refreshing déjà écrit puis deadline dépassée avant l'échange (race) : restauration du ready précédent, aucun échange, UPSTREAM_UNAVAILABLE", async () => {
+    const dir = await creerRepertoireTemporaire();
+    try {
+      const clock = creerHorlogeControlee(DEPART);
+      const stockage = construireDependancesStockage(dir, clock);
+      const avant = enregistrementExpire(1, clock);
+      await stockage.tokenStore.write(stockage.identite, avant);
+      await seedGenerations(stockage, { schemaVersion: 1, derniereReservee: 1, revoqueeJusqua: 0 });
+      const transport = creerTransportFactice([]);
+      const deadline = new Date(clock.now().getTime() + 50);
+      const tokenStoreInstrumente = {
+        ...stockage.tokenStore,
+        async write(identite: unknown, enregistrement: EnregistrementToken) {
+          await stockage.tokenStore.write(identite as never, enregistrement);
+          if (enregistrement.state === "refreshing") {
+            // Simule le temps écoulé entre l'écriture du marqueur et l'échange réseau.
+            clock.avancer(100);
+          }
+        },
+      };
+
+      await expect(
+        assurerTokenValide(
+          { transport, clock, profilAuth: { clientId: "c" }, ...stockage, tokenStore: tokenStoreInstrumente },
+          { budgetRestant: 30, deadline },
+        ),
+      ).rejects.toMatchObject({ erreur: { code: "UPSTREAM_UNAVAILABLE" } });
+
+      expect(transport.appels).toHaveLength(0);
+      const persiste = await stockage.tokenStore.read(stockage.identite);
+      expect(persiste).toEqual(avant);
+    } finally {
+      await nettoyerRepertoire(dir);
+    }
+  });
+
   it("critère #7 : expires_in invalide lors d'un refresh ⇒ expiresAt = now + 300s", async () => {
     const dir = await creerRepertoireTemporaire();
     try {
