@@ -35,6 +35,13 @@ const PAS_ATTENTE_OBSERVATEUR_MS = 100;
  */
 const DELAI_NETTOYAGE_MARQUEUR_MS = 5_000;
 
+/**
+ * Fenêtre interne pour `invaliderAccessToken` (décision 12, 07 §4) : ce nettoyage ne dépend pas de
+ * la deadline de l'appelant HTTP (qui vient justement d'échouer sur un 401) — même borne que
+ * {@link DELAI_NETTOYAGE_MARQUEUR_MS}.
+ */
+const DELAI_INVALIDATION_MS = 5_000;
+
 export interface ProfilAuth {
   readonly clientId: string;
   readonly clientSecret?: Secret;
@@ -152,6 +159,25 @@ async function restaurerReadySiToujoursEnCours(
     const relu = await deps.tokenStore.read(deps.identite);
     if (relu !== null && relu.generation === generation && relu.state === "refreshing") {
       await deps.tokenStore.write(deps.identite, enregistrementPrecedent);
+    }
+  });
+}
+
+/**
+ * Invalide ciblement l'access token de génération `generationUtilisee` après un 401 métier
+ * (décision 12, 07 §4) : sous le verrou identité, relit l'enregistrement et, **seulement si** sa
+ * génération est toujours celle du jeton rejeté et son état `ready`, ramène `expiresAt` à `now`
+ * pour forcer le refresh suivant via {@link assurerTokenValide}. Si la génération a déjà avancé
+ * (un autre appel a déjà rafraîchi), n'écrit rien : l'appelant reprend avec la génération récente.
+ * Aucun champ nouveau, aucun code d'erreur nouveau, pas de passage par `reauth_required` (le
+ * refresh token peut être valide).
+ */
+export async function invaliderAccessToken(deps: DependancesCycle, generationUtilisee: number): Promise<void> {
+  const deadline = new Date(deps.clock.now().getTime() + DELAI_INVALIDATION_MS);
+  await sousVerrouIdentite(deps.verrous, deps.nomVerrou, deadline, undefined, deps.journal, async () => {
+    const relu = await deps.tokenStore.read(deps.identite);
+    if (relu !== null && relu.generation === generationUtilisee && relu.state === "ready") {
+      await deps.tokenStore.write(deps.identite, { ...relu, expiresAt: deps.clock.now().toISOString() });
     }
   });
 }
