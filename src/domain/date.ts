@@ -81,23 +81,41 @@ export function validerIntervalle(intervalle: { du: DateCivile; au: DateCivile }
   return { ok: true };
 }
 
-const FORMATEUR_PARIS = new Intl.DateTimeFormat("fr-FR", {
-  timeZone: "Europe/Paris",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
+const formateursParFuseau = new Map<string, Intl.DateTimeFormat>();
 
-/** Date civile du jour en Europe/Paris, via l'horloge injectée (07 §1) : aucun `Date.now()` direct. */
-export function aujourdHuiParis(clock: Clock): DateCivile {
-  const parties = FORMATEUR_PARIS.formatToParts(clock.now());
+/** Formateur `Intl` mémoïsé par fuseau (décision T05) : jamais recréé à chaque appel. */
+function formateurPourFuseau(fuseau: string): Intl.DateTimeFormat {
+  let formateur = formateursParFuseau.get(fuseau);
+  if (formateur === undefined) {
+    formateur = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: fuseau,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    formateursParFuseau.set(fuseau, formateur);
+  }
+  return formateur;
+}
+
+/**
+ * Date civile de `instant` dans `fuseau` (07 §4, rollover des groupes de quota) : chaque fuseau
+ * utilisé obtient son propre formateur mémoïsé, créé une seule fois.
+ */
+export function dateCivileDansFuseau(instant: Date, fuseau: string): DateCivile {
+  const parties = formateurPourFuseau(fuseau).formatToParts(instant);
   const annee = parties.find((partie) => partie.type === "year")?.value;
   const mois = parties.find((partie) => partie.type === "month")?.value;
   const jour = parties.find((partie) => partie.type === "day")?.value;
   if (!annee || !mois || !jour) {
-    throw new Error("Impossible de calculer la date civile Europe/Paris");
+    throw new Error(`Impossible de calculer la date civile dans le fuseau ${fuseau}`);
   }
   return `${annee}-${mois}-${jour}`;
+}
+
+/** Date civile du jour en Europe/Paris, via l'horloge injectée (07 §1) : aucun `Date.now()` direct. */
+export function aujourdHuiParis(clock: Clock): DateCivile {
+  return dateCivileDansFuseau(clock.now(), "Europe/Paris");
 }
 
 /** `max(0, aujourd'hui − échéance)` en jours civils ; échéance absente ⇒ `null` (07 §8). */
