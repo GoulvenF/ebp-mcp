@@ -7,4 +7,5 @@ export * from "./fixtures/index.js";
 export * from "./quota/index.js";
 export * from "./http/index.js";
 export * from "./adapters/hubbix-gescom/index.js";
+export * from "./pagination/index.js";
 export * from "./version.js";
