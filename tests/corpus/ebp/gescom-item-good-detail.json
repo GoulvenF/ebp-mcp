@@ -1,0 +1,53 @@
+{
+  "id": "gescom-item-good-detail",
+  "famille": "hubbix-gescom",
+  "route": "/items/goods/{id}",
+  "forme_enveloppe": "fiche",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /items/goods/{id}",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": [],
+  "couverture": ["champs-null"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/items/goods/art-10",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "id": "art-10",
+      "code": "ART010",
+      "label": "Chaise de bureau",
+      "itemType": "GoodItem",
+      "priceVatExcluded": "89.90",
+      "priceVatIncluded": null,
+      "vatRate": "20",
+      "itemStatus": 0
+    }
+  },
+  "attentes": {
+    "description": "Détail d'un article bien (`itemType: GoodItem` → `bien`) via la route dédiée (A13) : fiche nue sans enveloppe de liste, `priceVatIncluded` explicitement `null` côté source conservé `null`, jamais 0 inventé.",
+    "resultats": [
+      {
+        "id": "art-10",
+        "code": "ART010",
+        "libelle": "Chaise de bureau",
+        "type": "bien",
+        "prix_ht": "89.9",
+        "prix_ttc": null,
+        "taux_tva": "20",
+        "devise": null,
+        "actif": true
+      }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Fiche obtenue par le type fourni par l'appelant (A13) : pas de résolution « à l'aveugle », pas d'essai de /items/services/{id} après échec."
+}

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   ArticleSchema,
+  ClientGcSchema,
   DocumentVenteSchema,
   EcheanceSchema,
   LigneEcritureSchema,
@@ -53,6 +54,10 @@ const SCHEMA_PAR_FIXTURE: Record<string, z.ZodType> = {
   "gescom-sale-commitments-fenetre-un-jour": EcheanceSchema,
   "gescom-items-pagination-invalide": ArticleSchema,
   "gescom-items-page-vide": ArticleSchema,
+  "gescom-item-good-detail": ArticleSchema,
+  "gescom-item-service-detail": ArticleSchema,
+  "gescom-customer-detail": ClientGcSchema,
+  "gescom-items-decimal-precision": ArticleSchema,
 };
 // Référentiel GC des taux de TVA : aucun schéma domaine dédié en lot 1 (hors périmètre T03a/T03b).
 const SCHEMA_GENERIQUE = z.record(z.string(), z.unknown());
@@ -185,7 +190,10 @@ describe("corpus EBP (tests/corpus/ebp) — provenance et comportement", () => {
       expect(() => enveloppeSchema(schemaResultat).parse(enveloppe), `fixture ${fixture.id}`).not.toThrow();
       expect(() => MetaSchema.parse(enveloppe.meta)).not.toThrow();
 
-      const estFicheOuAgregat = fixture.attentes.erreur !== null || fixture.forme_enveloppe === "tableau_nu";
+      const estFicheOuAgregat =
+        fixture.attentes.erreur !== null ||
+        fixture.forme_enveloppe === "tableau_nu" ||
+        fixture.forme_enveloppe === "fiche";
       if (estFicheOuAgregat) {
         expect(fixture.attentes.pagination, `fixture ${fixture.id}`).toBeNull();
       }

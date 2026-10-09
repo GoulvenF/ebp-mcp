@@ -45,8 +45,8 @@
         "code": "ART001",
         "libelle": "Prestation de précision",
         "type": "service",
-        "prix_ht": "1545.0000000000000000000000000",
-        "prix_ttc": "1854.0000000000000000000000000",
+        "prix_ht": "1545",
+        "prix_ttc": "1854",
         "taux_tva": "20",
         "devise": null,
         "actif": true
@@ -56,5 +56,5 @@
     "avertissements": [],
     "erreur": null
   },
-  "notes": "Aucun passage par Number : le lexème décimal source est repris sans arrondi intermédiaire (07 §5)."
+  "notes": "Aucun passage par Number : le lexème décimal source est repris sans arrondi intermédiaire (07 §5). `decimalDepuisLexeme` (Big.js) canonicalise la chaîne (zéros de fin après la virgule retirés, aucun chiffre significatif perdu) : `1545.0…0` et `1854.0…0` deviennent `1545`/`1854`, pas un arrondi, une normalisation à valeur égale."
 }

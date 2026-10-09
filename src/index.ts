@@ -6,4 +6,5 @@ export * from "./auth/index.js";
 export * from "./fixtures/index.js";
 export * from "./quota/index.js";
 export * from "./http/index.js";
+export * from "./adapters/hubbix-gescom/index.js";
 export * from "./version.js";

@@ -1,0 +1,54 @@
+{
+  "id": "gescom-customer-detail",
+  "famille": "hubbix-gescom",
+  "route": "/customers/{id}",
+  "forme_enveloppe": "fiche",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /customers/{id}",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": [],
+  "couverture": ["champs-null"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/customers/cli-042",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "code": "CLI042",
+      "name": "Atelier Dupont",
+      "siret": null,
+      "intracommunityVatNumber": null,
+      "customerGroupId": "grp-1",
+      "settlementTermId": "cond-30j",
+      "balanceDue": "1287.50",
+      "pastDueBalance": "430.00"
+    }
+  },
+  "attentes": {
+    "description": "Fiche client par ID direct (⚠️ il n'existe pas de `GET /customers` liste, 02 §3) : `balanceDue`/`pastDueBalance` conservés en décimaux, `siret`/`intracommunityVatNumber` explicitement absents côté source conservés `null`.",
+    "resultats": [
+      {
+        "id": "cli-042",
+        "code": "CLI042",
+        "nom": "Atelier Dupont",
+        "siret": null,
+        "numero_tva_intracommunautaire": null,
+        "groupe_id": "grp-1",
+        "condition_reglement_id": "cond-30j",
+        "solde_du": "1287.5",
+        "solde_echu": "430",
+        "devise": null
+      }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "`id` du résultat provient de l'appel (segment de route), pas du corps : la fiche GC ne répète pas son propre identifiant."
+}
