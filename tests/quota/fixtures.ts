@@ -8,8 +8,14 @@ export async function creerRepertoireTemporaire(): Promise<string> {
   return mkdtemp(join(tmpdir(), "ebp-mcp-quota-"));
 }
 
+/**
+ * `maxRetries`/`retryDelay` : une opération encore en vol (écriture de fichier temporaire d'un
+ * store JSON, cf. `creerStoreJson`) peut créer une entrée juste après le listage interne de `rm`,
+ * provoquant un `ENOTEMPTY` transitoire qui masquerait une vraie cause de nettoyage. `fs.rm` relance
+ * automatiquement sur `ENOTEMPTY`/`EBUSY`/… avec ces options.
+ */
 export async function nettoyerRepertoire(chemin: string): Promise<void> {
-  await rm(chemin, { recursive: true, force: true });
+  await rm(chemin, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
 interface Attente {
