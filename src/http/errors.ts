@@ -44,6 +44,15 @@ export function erreurHoteNonAutorise(routeId: string | null, hote: string): Err
   return erreurGuardRefuse("Hôte hors de la liste blanche.", { route: routeId, hote });
 }
 
+/**
+ * `POST` reçu sur l'hôte identité avec un chemin autre que `/connect/token` (décision 16) :
+ * guard de `transport-fetch`, dernière ligne de défense derrière le client. `chemin` est un
+ * libellé interne (jamais une URL/query complète) : aucune donnée sensible à logguer.
+ */
+export function erreurCheminIdentiteRefuse(chemin: string): ErreurHttp {
+  return erreurGuardRefuse("Chemin refusé sur l'hôte identité (seul /connect/token est autorisé).", { chemin });
+}
+
 export function erreurSegmentManquant(routeId: string, segment: string): ErreurHttp {
   return erreurGuardRefuse("Segment de chemin manquant.", { route: routeId, segment });
 }

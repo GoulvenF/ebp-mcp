@@ -315,6 +315,25 @@ describe("client.ts — critère #8 : budget, deadline, timeout", () => {
     clock.avancer(5000);
     await expect(promesse).rejects.toMatchObject({ erreur: { code: "RESOLUTION_INCOMPLETE" } });
   });
+
+  it("révision Lead Tech (PR #10) : attente d'admission franchissant la deadline — arrêt avant émission, pas de timeout à 0", async () => {
+    const transport = creerTransportFactice([]);
+    const clock = creerHorlogeControlee(DEPART);
+    const hook = creerHookTokenFactice({ accessToken: "acc-1", generation: 1 });
+    const quota = creerQuotaFactice(clock);
+    const reserveDepartOriginal = quota.reserveDepart.bind(quota);
+    quota.reserveDepart = async (groupe, deadline, signal) => {
+      // L'admission « prend du temps » et fait franchir la deadline avant de rendre la main.
+      clock.avancer(10_000);
+      return reserveDepartOriginal(groupe, deadline, signal);
+    };
+    const deps: DependancesClientHttp = { transport, clock, quota, hookToken: hook };
+
+    await expect(
+      executerRequete(deps, budgetDe(30, 5_000), contexte(), ROUTE_SANS_PARAMS),
+    ).rejects.toMatchObject({ erreur: { code: "RESOLUTION_INCOMPLETE", details: { raison: "deadline" } } });
+    expect(transport.appels).toHaveLength(0);
+  });
 });
 
 describe("client.ts — critère #9 : corps malformé", () => {

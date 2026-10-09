@@ -209,10 +209,14 @@ export async function executerRequete(
     // est réellement proche de l'expiration, sinon c'est un no-op réseau (0 tentative consommée).
     await prepareToken();
 
-    // Revérifié ici (et pas seulement en tête de tentative) : la préparation du token ci-dessus
-    // peut avoir consommé le reste du budget partagé (décision 9) ; arrêt avant toute émission.
+    // Revérifié ici (et pas seulement en tête de tentative) : l'attente d'admission peut avoir
+    // franchi la deadline, et la préparation du token ci-dessus peut avoir consommé le reste du
+    // budget partagé (décision 8/9) ; arrêt avant toute émission.
     if (estAnnule(budget.signal)) {
       throw erreurAnnuleHttp(route.id);
+    }
+    if (deps.clock.now().getTime() >= budget.deadline.getTime()) {
+      throw erreurDeadlineDepasseeHttp(route.id);
     }
     if (budget.restant < 1) {
       throw erreurBudgetEpuiseHttp(route.id);
