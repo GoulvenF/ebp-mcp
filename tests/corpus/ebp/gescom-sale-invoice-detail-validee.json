@@ -1,0 +1,71 @@
+{
+  "id": "gescom-sale-invoice-detail-validee",
+  "famille": "hubbix-gescom",
+  "route": "/sale-invoices/validated/{id}",
+  "forme_enveloppe": "fiche",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /sale-invoices/validated/{id}",
+    "consulte_le": "2026-10-09"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": [],
+  "couverture": ["decimal-precision", "champs-null"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/sale-invoices/validated/doc-201",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "id": "doc-201",
+      "documentType": "SaleInvoice",
+      "documentStatus": 1,
+      "name": "Client Beta",
+      "date": "2026-02-05",
+      "number": "F2026-201",
+      "totalAmountVatExcluded": "1234567890123456789012345.6789",
+      "totalAmountVatIncluded": "1481481468148148146814814.4567",
+      "netAmountVatIncluded": "1481481468148148146814814.4567",
+      "dueAmount": "0.00",
+      "accountingTransferStatus": 1,
+      "customerId": "cli-201",
+      "commitments": null,
+      "lines": [],
+      "footer": null,
+      "vatSummaryLines": null
+    }
+  },
+  "attentes": {
+    "description": "Facture validée (routée sur `/sale-invoices/validated/{id}`, distincte de la route provisoire, A13) : lexème à ~28 chiffres restitué sans perte (decimalDepuisLexeme, jamais Number) ; `footer`/`vatSummaryLines`/`commitments` explicitement `null` côté source conservés `null`.",
+    "resultats": [
+      {
+        "id": "doc-201",
+        "type": "SaleInvoice",
+        "statut": "valide",
+        "tiers_id": "cli-201",
+        "tiers_nom": "Client Beta",
+        "date": "2026-02-05",
+        "numero": "F2026-201",
+        "montant_ht": "1234567890123456789012345.6789",
+        "montant_ttc": "1481481468148148146814814.4567",
+        "montant_net_ttc": "1481481468148148146814814.4567",
+        "devise": null,
+        "reste_du": "0",
+        "statut_comptable": "accounted",
+        "lignes": [],
+        "pied": null,
+        "recapitulatif_tva": null,
+        "echeances": null,
+        "date_validite": null,
+        "montant_en_retard": null
+      }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "`Number(\"19.9999999999999999999999999\")`-like arrondi : ce lexème à 29 chiffres doit traverser decimalDepuisLexeme exactement (07 §5)."
+}

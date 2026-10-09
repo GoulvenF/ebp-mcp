@@ -11,11 +11,16 @@
   "statut": "synthetique",
   "observe_le": null,
   "preuves_liees": [],
-  "couverture": ["enum-inconnu"],
+  "couverture": [
+    "enum-inconnu"
+  ],
   "requete_attendue": {
     "methode": "GET",
     "chemin": "/sale-documents",
-    "parametres": { "skip": 0, "take": 50 }
+    "parametres": {
+      "skip": 0,
+      "take": 50
+    }
   },
   "reponse_ebp": {
     "statut_http": 200,
@@ -51,18 +56,26 @@
         "tiers_id": null,
         "date": "2026-03-10",
         "numero": "P2026-001",
-        "montant_ht": "500.00",
-        "montant_ttc": "600.00",
-        "montant_net_ttc": "600.00",
+        "montant_ht": "500",
+        "montant_ttc": "600",
+        "montant_net_ttc": "600",
         "devise": null,
-        "reste_du": "600.00",
+        "reste_du": "600",
         "statut_comptable": "accounted",
         "lignes": null
       }
     ],
-    "pagination": { "renvoyes": 1, "total": null, "total_source": 1, "hasMore": false, "curseur": null },
-    "avertissements": ["Valeur enum inconnue reçue de la source : \"SaleProforma\""],
+    "pagination": {
+      "renvoyes": 1,
+      "total": null,
+      "total_source": 1,
+      "hasMore": false,
+      "curseur": null
+    },
+    "avertissements": [
+      "Valeur enum inconnue reçue de la source : \"SaleProforma\""
+    ],
     "erreur": null
   },
-  "notes": "`SaleProforma` n'existe pas dans `SaleDocumentType` (02 §3) : aucun mapping inventé, repli explicite + avertissement (A26)."
+  "notes": "`SaleProforma` n'existe pas dans `SaleDocumentType` (02 §3) : aucun mapping inventé, repli explicite + avertissement (A26). Attentes corrigées en forme décimale canonique (07 §5) : 500.00→500, 600.00→600."
 }

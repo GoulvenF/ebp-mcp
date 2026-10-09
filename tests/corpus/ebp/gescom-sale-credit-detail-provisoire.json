@@ -1,0 +1,71 @@
+{
+  "id": "gescom-sale-credit-detail-provisoire",
+  "famille": "hubbix-gescom",
+  "route": "/sale-credits/{id}",
+  "forme_enveloppe": "fiche",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /sale-credits/{id}",
+    "consulte_le": "2026-10-09"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": ["E10"],
+  "couverture": ["avoir-negatif"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/sale-credits/doc-202",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "id": "doc-202",
+      "documentType": "SaleCredit",
+      "documentStatus": 0,
+      "name": "Client Gamma",
+      "date": "2026-02-10",
+      "number": "AV2026-202",
+      "totalAmountVatExcluded": "-50.00",
+      "totalAmountVatIncluded": "-60.00",
+      "netAmountVatIncluded": "-60.00",
+      "dueAmount": "-60.00",
+      "accountingTransferStatus": 0,
+      "customerId": "cli-202",
+      "commitments": [],
+      "lines": [{ "designation": "Retour marchandise" }],
+      "footer": { "totalDiscount": "0.00" },
+      "vatSummaryLines": [{ "vatRate": "20", "vatAmount": "-10.00" }]
+    }
+  },
+  "attentes": {
+    "description": "Avoir provisoire (routé sur `/sale-credits/{id}`) : montants source déjà négatifs conservés tels quels, aucune seconde inversion de signe (A01, 07 §8 réserve ce choix à T11).",
+    "resultats": [
+      {
+        "id": "doc-202",
+        "type": "SaleCredit",
+        "statut": "provisoire",
+        "tiers_id": "cli-202",
+        "tiers_nom": "Client Gamma",
+        "date": "2026-02-10",
+        "numero": "AV2026-202",
+        "montant_ht": "-50",
+        "montant_ttc": "-60",
+        "montant_net_ttc": "-60",
+        "devise": null,
+        "reste_du": "-60",
+        "statut_comptable": "sent_for_accounting",
+        "lignes": [{ "designation": "Retour marchandise" }],
+        "pied": { "totalDiscount": "0.00" },
+        "recapitulatif_tva": [{ "vatRate": "20", "vatAmount": "-10.00" }],
+        "echeances": [],
+        "date_validite": null,
+        "montant_en_retard": null
+      }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "`commitments: []` (aucune échéance ouverte pour un avoir) : tableau vide distinct de `null`."
+}

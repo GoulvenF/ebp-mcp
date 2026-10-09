@@ -1,0 +1,70 @@
+{
+  "id": "gescom-sale-deposit-invoice-detail",
+  "famille": "hubbix-gescom",
+  "route": "/sale-deposit-invoices/{id}",
+  "forme_enveloppe": "fiche",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /sale-deposit-invoices/{id}",
+    "consulte_le": "2026-10-09"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": [],
+  "couverture": ["champs-null"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/sale-deposit-invoices/doc-206",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "id": "doc-206",
+      "documentType": "SaleDepositInvoice",
+      "documentStatus": 0,
+      "name": "Client Eta",
+      "date": "2026-02-14",
+      "number": "AC2026-206",
+      "accountingTransferStatus": 0,
+      "customerId": "cli-206",
+      "commitments": null,
+      "lines": null,
+      "footer": null,
+      "vatSummaryLines": null,
+      "amountVatIncluded": "200.00",
+      "remainingAmount": "50.00",
+      "lateAmount": "0.00"
+    }
+  },
+  "attentes": {
+    "description": "Acompte facture (routé sur `/sale-deposit-invoices/{id}`) : 02 cite `amountVatIncluded`/`remainingAmount`/`lateAmount` à la place des totaux de l'en-tête commun — `montant_ht` reste `null`, faute de `totalAmountVatExcluded` documenté pour cette route (A26, pas de champ inventé).",
+    "resultats": [
+      {
+        "id": "doc-206",
+        "type": "SaleDepositInvoice",
+        "statut": "provisoire",
+        "tiers_id": "cli-206",
+        "tiers_nom": "Client Eta",
+        "date": "2026-02-14",
+        "numero": "AC2026-206",
+        "montant_ht": null,
+        "montant_ttc": "200",
+        "montant_net_ttc": "200",
+        "devise": null,
+        "reste_du": "50",
+        "statut_comptable": "sent_for_accounting",
+        "lignes": null,
+        "pied": null,
+        "recapitulatif_tva": null,
+        "echeances": null,
+        "date_validite": null,
+        "montant_en_retard": "0"
+      }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Aucune variante `validated` documentée pour `SaleDepositInvoice` (plan GOU-272) : `Provisional` et `Validated` routent toutes deux sur `/sale-deposit-invoices/{id}`."
+}
