@@ -8,6 +8,7 @@ const DEPART = new Date("2026-01-01T00:00:00.000Z");
 
 function cle(position: number, extra: Partial<Record<string, unknown>> = {}) {
   return {
+    profil: "profil-test",
     identiteGeneration: 1,
     environnement: "prod",
     famille: "hubbix-gescom",
@@ -76,5 +77,34 @@ describe("cache.ts — critère #12 (volet cache) : capacités, TTL et coût zé
     expect(source.appels).toBe(1); // toujours 1 : aucun nouvel appel réseau.
     expect(second.appelsSource).toBe(0); // page servie depuis le cache : coût zéro.
     expect(second.resultats.map((e) => e.id)).toEqual(premier.resultats.map((e) => e.id));
+  });
+
+  it("deux profils distincts ⇒ deux lectures source, aucune entrée partagée", async () => {
+    const horloge = creerHorlogeControlee(DEPART);
+    const cache = new CacheSource(horloge);
+    const curseurs = new MagasinCurseurs(horloge);
+    const deps: DepsScan = { curseurs, cache, clock: horloge };
+
+    const page: PageSource<ElementFactice> = { elements: elements(1, 2, 3), suivant: null, totalSource: 3 };
+    // Même dossier/famille/filtres/position, seul le profil change.
+    const source = creerSourceFactice([page, page]);
+
+    const premier = await scanner(deps, {
+      contexte: contexteTest({ profil: "profil-a" }),
+      source,
+      limite: 1,
+      identite: identiteTest({ profil: "profil-a", limite: 1 }),
+    });
+    expect(source.appels).toBe(1);
+    expect(premier.appelsSource).toBe(1);
+
+    const second = await scanner(deps, {
+      contexte: contexteTest({ profil: "profil-b" }),
+      source,
+      limite: 1,
+      identite: identiteTest({ profil: "profil-b", limite: 1 }),
+    });
+    expect(source.appels).toBe(2); // pas de hit cache : profil différent ⇒ clé différente.
+    expect(second.appelsSource).toBe(1);
   });
 });

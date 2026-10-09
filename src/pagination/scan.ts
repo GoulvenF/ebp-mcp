@@ -213,11 +213,6 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
 
   async function drainerBuffer(): Promise<void> {
     while (etat.elementsEnAttente.length > 0 && resultats.length < limite && !interrompu) {
-      const epuise = budgetOuDeadlineEpuises();
-      if (epuise !== null) {
-        marquerArretPartiel(epuise, `Parcours interrompu avant enrichissement (${epuise}).`);
-        break;
-      }
       if (budget.signal?.aborted === true) {
         throw erreurScanAnnule();
       }
@@ -225,6 +220,11 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
       let enrichi: E;
       try {
         if (options.enrichir !== undefined) {
+          const epuise = budgetOuDeadlineEpuises();
+          if (epuise !== null) {
+            marquerArretPartiel(epuise, `Parcours interrompu avant enrichissement (${epuise}).`);
+            break;
+          }
           enrichi = await options.enrichir(element, budget);
           appelsSource += 1;
         } else {
@@ -259,6 +259,7 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
 
       const positionDemandee = etat.position;
       const cle = {
+        profil: identite.profil,
         identiteGeneration: identite.identiteGeneration,
         environnement: identite.environnement,
         famille: identite.famille,
@@ -300,7 +301,9 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
         appelsSource += 1;
       }
 
-      etat.totalSourceConnu = page.totalSource;
+      if (page.totalSource !== null) {
+        etat.totalSourceConnu = page.totalSource;
+      }
       etat.idsDernierePage = idsPage;
       etat.position = page.suivant;
       etat.sourceTerminee = page.suivant === null;

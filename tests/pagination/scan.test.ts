@@ -10,6 +10,7 @@ import {
   contexteTest,
   creerHorlogeControlee,
   creerSourceFactice,
+  creerSourceFacticeConsommantBudget,
   elements,
   identiteTest,
 } from "./fixtures.js";
@@ -109,6 +110,40 @@ describe("scan.ts — critère #4 : budget épuisé avec 0 résultat", () => {
   });
 });
 
+describe("scan.ts — régression : budget épuisé par la lecture de page elle-même", () => {
+  it("sans enrichissement, les éléments déjà tamponnés sont rendus même à budget épuisé", async () => {
+    const page: PageSource<ElementFactice> = { elements: elements(1, 2, 3), suivant: null, totalSource: 3 };
+    const source = creerSourceFacticeConsommantBudget([page]);
+    const resultat = await scanner(depsDe(), {
+      contexte: contexteTest({ budgetRestant: 1 }),
+      source,
+      limite: 50,
+      identite: identiteTest(),
+    });
+    // La lecture de page a consommé le seul point de budget disponible ; rendre des éléments déjà
+    // tamponnés ne coûte rien et ne doit pas être bloqué par ce garde.
+    expect(resultat.resultats.map((e) => e.id)).toEqual(["e1", "e2", "e3"]);
+    expect(resultat.completude).toBe("complete");
+    expect(resultat.raisonArret).toBeNull();
+  });
+
+  it("avec enrichissement, le budget épuisé par la lecture de page interrompt avant l'enrichissement", async () => {
+    const page: PageSource<ElementFactice> = { elements: elements(1, 2, 3), suivant: null, totalSource: 3 };
+    const source = creerSourceFacticeConsommantBudget([page]);
+    const resultat = await scanner(depsDe(), {
+      contexte: contexteTest({ budgetRestant: 1 }),
+      source,
+      limite: 50,
+      identite: identiteTest(),
+      enrichir: async (e) => e,
+    });
+    expect(resultat.resultats).toEqual([]);
+    expect(resultat.raisonArret).toBe("budget");
+    expect(resultat.completude).toBe("partielle");
+    expect(resultat.approximatif).toBe(true);
+  });
+});
+
 describe("scan.ts — critère #5 : total_source différent de total", () => {
   it("total filtré exact seulement en fin de parcours, null sinon", async () => {
     const page1: PageSource<ElementFactice> = { elements: elements(1, 2, 3, 4, 5), suivant: { p: 2 }, totalSource: 5000 };
@@ -132,6 +167,21 @@ describe("scan.ts — critère #5 : total_source différent de total", () => {
     expect(second.pagination.total).toBe(8);
     expect(second.pagination.total_source).toBe(5000);
     expect(second.pagination.total).not.toBe(second.pagination.total_source);
+  });
+});
+
+describe("scan.ts — régression : total_source n'est jamais écrasé par null", () => {
+  it("une page ultérieure sans total_source conserve le dernier total annoncé", async () => {
+    const page1: PageSource<ElementFactice> = { elements: elements(1, 2), suivant: { p: 2 }, totalSource: 42 };
+    const page2: PageSource<ElementFactice> = { elements: elements(3, 4), suivant: null, totalSource: null };
+    const source = creerSourceFactice([page1, page2]);
+    const resultat = await scanner(depsDe(), {
+      contexte: contexteTest(),
+      source,
+      limite: 50,
+      identite: identiteTest(),
+    });
+    expect(resultat.pagination.total_source).toBe(42);
   });
 });
 

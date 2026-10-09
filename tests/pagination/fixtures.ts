@@ -1,3 +1,4 @@
+import type { Budget } from "../../dist/index.js";
 import type { PageSource, PositionSource, SourcePaginee } from "../../dist/index.js";
 
 export { creerHorlogeControlee, type HorlogeControlee } from "../auth/fixtures.js";
@@ -35,6 +36,40 @@ export function creerSourceFactice(
     async lirePage(position: PositionSource): Promise<PageSource<ElementFactice>> {
       positionsRecues.push(position);
       appels += 1;
+      const page = file.shift();
+      if (page === undefined) {
+        throw new Error("Source factice : aucune page programmée (appel inattendu).");
+      }
+      return page;
+    },
+    idElement(element: ElementFactice): string {
+      return element.id;
+    },
+  };
+}
+
+/**
+ * Source paginée factice consommant le budget à la lecture de page, comme le fait le client HTTP
+ * réel (`src/http/client.ts`) : reproduit les scénarios où le budget s'épuise pendant la lecture
+ * elle-même plutôt qu'entre deux pages.
+ */
+export function creerSourceFacticeConsommantBudget(
+  pages: PageSource<ElementFactice>[],
+  options: { id?: string; nature?: "referentiel" | "transactionnel"; coutParPage?: number } = {},
+): SourcePaginee<ElementFactice> & { readonly appels: number } {
+  const file = [...pages];
+  const cout = options.coutParPage ?? 1;
+  let appels = 0;
+  return {
+    id: options.id ?? "source-test:/elements",
+    nature: options.nature ?? "transactionnel",
+    taillePage: 100,
+    get appels() {
+      return appels;
+    },
+    async lirePage(_position: PositionSource, budget: Budget): Promise<PageSource<ElementFactice>> {
+      appels += 1;
+      budget.consommer(cout);
       const page = file.shift();
       if (page === undefined) {
         throw new Error("Source factice : aucune page programmée (appel inattendu).");

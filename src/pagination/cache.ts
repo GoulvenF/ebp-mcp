@@ -15,6 +15,7 @@ export const CAPACITE_CACHE_OCTETS = 32 * 1024 * 1024;
  * entrée.
  */
 export interface CleCache {
+  readonly profil: string;
   readonly identiteGeneration: number;
   readonly environnement: string;
   readonly famille: string;
@@ -26,6 +27,7 @@ export interface CleCache {
 
 function serialiserCle(cle: CleCache): string {
   return JSON.stringify([
+    cle.profil,
     cle.identiteGeneration,
     cle.environnement,
     cle.famille,
