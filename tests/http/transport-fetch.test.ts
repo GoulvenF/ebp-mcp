@@ -50,6 +50,7 @@ describe("transport-fetch.ts", () => {
     } finally {
       await metier.fermer();
       await identite.fermer();
+      await cible.fermer();
     }
   });
 
