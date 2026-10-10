@@ -1,0 +1,38 @@
+{
+  "id": "compta-general-account-liste",
+  "famille": "hubbix-compta",
+  "route": "/general-account",
+  "forme_enveloppe": "data",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §2 Hubbix Comptabilité TPE — /general-account",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": ["E06"],
+  "couverture": ["enveloppe-data"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/general-account",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "data": [
+        { "uuid": "acc-uuid-1", "number": "411000", "label": "Clients", "active": true, "collective": true, "racine": false }
+      ]
+    }
+  },
+  "attentes": {
+    "description": "Référentiel sans pagination documentée (02 §2, D-T09-8) : `totalRecords` absent, `total_source` reste `null`, jamais un total inventé.",
+    "resultats": [
+      { "id": "acc-uuid-1", "numero": "411000", "libelle": "Clients", "actif": true, "collectif": true, "racine": false }
+    ],
+    "pagination": { "renvoyes": 1, "total": null, "total_source": null, "hasMore": false, "curseur": null },
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Fixture créée en T09 (D-T09-8)."
+}

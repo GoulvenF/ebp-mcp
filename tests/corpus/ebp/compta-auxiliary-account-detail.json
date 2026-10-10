@@ -1,0 +1,53 @@
+{
+  "id": "compta-auxiliary-account-detail",
+  "famille": "hubbix-compta",
+  "route": "/auxiliary-accounts/{numero}",
+  "forme_enveloppe": "fiche",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §2 Hubbix Comptabilité TPE — /auxiliary-accounts/{numero}",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": ["E07"],
+  "couverture": ["champs-null"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/auxiliary-accounts/4010001",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "uuid": "550e8400-e29b-41d4-a716-446655440010",
+      "name": "Fournisseur Démo",
+      "number": "4010001",
+      "vatNumber": null,
+      "siret": null,
+      "isActive": true,
+      "types": ["Fournisseur"],
+      "contact": { "email": null }
+    }
+  },
+  "attentes": {
+    "description": "Fiche `/auxiliary-accounts/{number}` : liste + `contact.email`, non garanti par 02 et laissé `null` côté source plutôt qu'inventé.",
+    "resultats": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440010",
+        "compte": "4010001",
+        "nom": "Fournisseur Démo",
+        "types": ["Fournisseur"],
+        "numero_tva": null,
+        "siret": null,
+        "actif": true,
+        "email": null,
+        "telephone": null
+      }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Fixture créée en T09 (D-T09-8)."
+}

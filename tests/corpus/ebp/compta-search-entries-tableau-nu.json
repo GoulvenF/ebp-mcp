@@ -33,24 +33,30 @@
     ]
   },
   "attentes": {
-    "description": "Écritures retrouvées par UUID (⚠️ tableau nu) : numéros de compte courts (`411`) et compte 8 chiffres (`0004100`) conservés tels quels, sans complétion ni retrait de zéros (A26).",
+    "description": "Écritures retrouvées par UUID (⚠️ tableau nu) : numéros de compte courts (`411`) et compte 8 chiffres (`0004100`) conservés tels quels, sans complétion ni retrait de zéros (A26). `/search-entries/entries` ne documente aucun UUID d'écriture, `journal`/`date`/`mode` (D-T09-1) : `ecriture_id` à `null`, `id` dérivé du contenu source (D-T09-2).",
     "resultats": [
       {
-        "id": "0004100-411-1",
-        "ecriture_id": "ecriture-search-1",
+        "id": "local:cdd755d7bbf4e334-1",
+        "ecriture_id": null,
+        "journal": null,
+        "date": null,
+        "mode": null,
         "compte_general": "0004100",
         "compte_tiers": "411",
         "libelle": "Règlement client",
         "debit": null,
-        "credit": "80.00",
+        "credit": "80",
         "piece": "REG-2026-003",
+        "document": null,
         "echeance": null,
         "lettrage": null
       }
     ],
     "pagination": null,
-    "avertissements": [],
+    "avertissements": [
+      "/search-entries/entries ne documente aucun UUID d'écriture (02 §2) : `ecriture_id` laissé à null pour toutes les lignes de cette réponse (D-T09-1)."
+    ],
     "erreur": null
   },
-  "notes": "Lookup borné par UUID explicites : résultat d'agrégat, `pagination: null` (07 §5)."
+  "notes": "Lookup borné par UUID explicites : résultat d'agrégat, `pagination: null` (07 §5). `attentes` mises à jour par T09 (D-T09-1/2) ; `credit` \"80.00\" source devient \"80\" après `decimalDepuisLexeme` (D-T09-3)."
 }

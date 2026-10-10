@@ -116,7 +116,11 @@ export function determinerFormeEnveloppeReelle(corps: unknown): FormeEnveloppe |
   if (Array.isArray(objet.linesEntries)) {
     return "linesEntries";
   }
-  if (Array.isArray(objet.data) && "totalRecords" in objet) {
+  // D-T09-8 (T09) : extension additive — `totalRecords` n'est pas toujours présent
+  // (`/journals`, `/general-account`, `/vat-rate`, `/auxiliary-account-types` : 02 §2 ne documente
+  // aucun total pour ces référentiels). La discrimination des fixtures déjà au corpus (toutes avec
+  // `totalRecords`) reste inchangée : ce test est un sur-ensemble strict du précédent.
+  if (Array.isArray(objet.data)) {
     return "data";
   }
   if (Array.isArray(objet.elements) && "total" in objet) {
