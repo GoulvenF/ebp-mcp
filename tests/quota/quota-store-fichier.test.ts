@@ -2,12 +2,16 @@ import { readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  cheminEtatQuota,
   creerGestionnaireVerrous,
   creerOperationsFichierNode,
   creerQuotaStoreFichier,
   creerStoreJson,
+  dateCivileDansFuseau,
   ErreurQuota,
   ErreurStockage,
+  TYPE_QUOTA,
+  type EtatQuotaPersistant,
   type GroupeQuota,
   type Identifiant,
   type OperationsFichier,
@@ -91,27 +95,52 @@ describe("quota-store-fichier.ts (fiche T05, 07 §4)", () => {
   });
 
   describe("critère 4 — réserve", () => {
-    it(
-      "maxPerDay=10000, reserve=500 ⇒ 9500 réservations acceptées, la 9501ᵉ refusée sans mutation",
-      async () => {
-        const qs = construire(dir, clock, { g: config({ minIntervalMs: 0, maxPerDay: 10000, reserve: 500 }) });
+    it("maxPerDay=20, reserve=5 ⇒ 15 réservations acceptées, la 16ᵉ refusée sans mutation", async () => {
+      const qs = construire(dir, clock, { g: config({ minIntervalMs: 0, maxPerDay: 20, reserve: 5 }) });
 
-        for (let i = 0; i < 9500; i += 1) {
-          await qs.reserveDepart("g", LOIN(clock));
-        }
-        const statutAvant = await qs.getStatut("g");
-        expect(statutAvant.quotaUtilisable).toBe(0);
-        expect(statutAvant.quotaJourRestant).toBe(500);
+      for (let i = 0; i < 15; i += 1) {
+        await qs.reserveDepart("g", LOIN(clock));
+      }
+      const statutAvant = await qs.getStatut("g");
+      expect(statutAvant.quotaUtilisable).toBe(0);
+      expect(statutAvant.quotaJourRestant).toBe(5);
 
-        await expect(qs.reserveDepart("g", LOIN(clock))).rejects.toMatchObject({
-          erreur: { code: "RESOLUTION_INCOMPLETE", details: { raison: "quota" } },
-        });
+      await expect(qs.reserveDepart("g", LOIN(clock))).rejects.toMatchObject({
+        erreur: { code: "RESOLUTION_INCOMPLETE", details: { raison: "quota" } },
+      });
 
-        const statutApres = await qs.getStatut("g");
-        expect(statutApres.quotaJourRestant).toBe(500); // inchangé par le refus
-      },
-      30000,
-    );
+      const statutApres = await qs.getStatut("g");
+      expect(statutApres.quotaJourRestant).toBe(5); // inchangé par le refus
+    });
+
+    it("volume réel 07 §4 (maxPerDay=10000, reserve=500) : seuil 9500 pré-positionné, sans boucle de 9500 itérations", async () => {
+      const groupeConfig = config({ minIntervalMs: 0, maxPerDay: 10000, reserve: 500 });
+      const operations = creerOperationsFichierNode();
+      const store = creerStoreJson({ operations });
+
+      // Pré-positionne l'état au seuil - 1 (même format d'enveloppe que `creerStoreJson.ecrire`) :
+      // un seul `reserveDepart` réel suffit alors pour atteindre exactement maxPerDay - reserve.
+      await store.ecrire<EtatQuotaPersistant>(cheminEtatQuota(dir, "g" as unknown as Identifiant), TYPE_QUOTA, {
+        jour: dateCivileDansFuseau(clock.now(), groupeConfig.resetTimezone),
+        consomme: 9499,
+        consommeAuth: 0,
+        dernierDepart: null,
+        finCooldown429: null,
+      });
+      const qs = construire(dir, clock, { g: groupeConfig }, operations);
+
+      await qs.reserveDepart("g", LOIN(clock)); // consomme devient 9500 = maxPerDay - reserve
+      const statutAvant = await qs.getStatut("g");
+      expect(statutAvant.quotaUtilisable).toBe(0);
+      expect(statutAvant.quotaJourRestant).toBe(500);
+
+      await expect(qs.reserveDepart("g", LOIN(clock))).rejects.toMatchObject({
+        erreur: { code: "RESOLUTION_INCOMPLETE", details: { raison: "quota" } },
+      });
+
+      const statutApres = await qs.getStatut("g");
+      expect(statutApres.quotaJourRestant).toBe(500); // inchangé par le refus
+    });
   });
 
   describe("critère 5 — rollover Europe/Paris", () => {
