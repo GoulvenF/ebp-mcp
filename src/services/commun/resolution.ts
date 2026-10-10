@@ -35,13 +35,13 @@ export async function resoudreUnique<E>(deps: DepsScan, options: OptionsResoluti
     filtre: options.correspond,
   });
 
+  if (resultat.resultats.length >= 2) {
+    throw erreurReferenceAmbigue({ trouves: resultat.resultats.length });
+  }
+
   if (resultat.completude === "partielle") {
     const raison = resultat.raisonArret === "limite" || resultat.raisonArret === "cursor_capacity" ? null : resultat.raisonArret;
     throw erreurResolutionIncomplete(raison, { trouves: resultat.resultats.length });
-  }
-
-  if (resultat.resultats.length >= 2) {
-    throw erreurReferenceAmbigue({ trouves: resultat.resultats.length });
   }
 
   const premier = resultat.resultats[0];

@@ -113,6 +113,30 @@ describe("resolution.ts — critère : un candidat trouvé puis source épuisée
   });
 });
 
+describe("resolution.ts — critère : deux correspondances exactes trouvées sur une page marquée source incomplète ⇒ AMBIGUOUS_REFERENCE (prioritaire sur l'interruption)", () => {
+  it("deux correspondances dans l'unique page lue, puis source signalée incomplète : AMBIGUOUS_REFERENCE, jamais RESOLUTION_INCOMPLETE", async () => {
+    const page: PageSource<ElementFactice> = {
+      elements: [
+        { id: "x1", valeur: 1 },
+        { id: "x2", valeur: 1 },
+      ],
+      suivant: null,
+      totalSource: 2,
+      sourceIncomplete: true,
+    };
+    const source = creerSourceFactice([page]);
+    const deps = depsDe();
+    await expect(
+      resoudreUnique(deps, {
+        contexte: contexteTest(),
+        source,
+        identite: identiteTest(),
+        correspond: (e) => e.valeur === 1,
+      }),
+    ).rejects.toMatchObject({ erreur: { code: "AMBIGUOUS_REFERENCE" } });
+  });
+});
+
 describe("resolution.ts — critère : égalité stricte, pas de normalisation côté appelant", () => {
   it("\"411\" ne matche pas \"411000\" : seul l'élément strictement égal est retenu", async () => {
     const page: PageSource<ElementFactice> = {

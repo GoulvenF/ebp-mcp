@@ -14,8 +14,16 @@ const DossierOptionnel = z.string().min(1).optional();
 const InclureBrutDefaut = z.boolean().default(false);
 const LimiteDefaut = z.number().int().min(1).max(500).default(50);
 const CurseurOptionnel = z.string().min(1).optional();
-/** Texte non vide quand fourni ; la validation « blanc » fine (D-T11-4) reste dans `correspondTexte`. */
-const TexteOptionnel = z.string().min(1).optional();
+/**
+ * Texte non vide ni blanc quand fourni (D-T11-4) : rejeté **au niveau du schéma** (`INVALID_ARGUMENT`,
+ * 0 appel réseau), pas seulement par `correspondTexte` appelé plus tard dans le filtre du scan —
+ * sinon une entrée blanche déclencherait déjà une lecture de page avant le refus.
+ */
+const TexteOptionnel = z
+  .string()
+  .min(1)
+  .refine((valeur) => valeur.trim().length > 0, { message: "`texte` ne peut pas être composé uniquement d'espaces." })
+  .optional();
 const IdentifiantOptionnel = z.string().min(1).optional();
 
 const champsListe = {
@@ -149,6 +157,35 @@ export const TypeDocumentVenteEntreeSchema = z.enum([
   "devis_etude",
 ]);
 
+/**
+ * Combinaisons type/statut contradictoires (D-T11-7) : `statut: "facture"` n'a de sens que pour
+ * un `devis` (le seul type dont le statut source `1` se nomme `facture` plutôt que `valide`) ; sans
+ * `types` fourni, le type `inconnu` reste inclus et aucune combinaison n'est jugée contradictoire.
+ */
+function exigerCoherenceTypeStatutDocuments(
+  data: { types?: string[] | undefined; statut?: string | undefined },
+  ctx: z.RefinementCtx,
+): void {
+  if (data.types === undefined || data.statut === undefined) {
+    return;
+  }
+  const contientDevis = data.types.includes("devis");
+  if (data.statut === "facture" && !contientDevis) {
+    ctx.addIssue({
+      code: "custom",
+      message: "`statut: \"facture\"` n'est valide que pour `types` contenant `devis`.",
+      path: ["statut"],
+    });
+  }
+  if (data.statut === "valide" && contientDevis && data.types.every((t) => t === "devis")) {
+    ctx.addIssue({
+      code: "custom",
+      message: "`statut: \"valide\"` n'est pas valide pour `types: [\"devis\"]` seul (un devis n'a pas de statut `valide`).",
+      path: ["statut"],
+    });
+  }
+}
+
 export const ListerDocumentsVenteEntreeSchema = z
   .object({
     ...champsListe,
@@ -160,9 +197,35 @@ export const ListerDocumentsVenteEntreeSchema = z
     texte: TexteOptionnel,
   })
   .strict()
-  .superRefine(exigerOrdreDates);
+  .superRefine(exigerOrdreDates)
+  .superRefine(exigerCoherenceTypeStatutDocuments);
 
 // --- 6. detail_document (GC) -----------------------------------------------------------------
+
+/** `{type: devis, statut: valide}` et `{type ≠ devis, statut: facture}` sont contradictoires (D-T11-7). */
+function exigerCoherenceReferenceDocument(
+  data: { reference?: { type: string; statut: string } | undefined },
+  ctx: z.RefinementCtx,
+): void {
+  if (data.reference === undefined) {
+    return;
+  }
+  const { type, statut } = data.reference;
+  if (type === "devis" && statut === "valide") {
+    ctx.addIssue({
+      code: "custom",
+      message: "`reference.statut: \"valide\"` n'est pas valide pour `reference.type: \"devis\"` (un devis n'a pas de statut `valide`).",
+      path: ["reference", "statut"],
+    });
+  }
+  if (type !== "devis" && statut === "facture") {
+    ctx.addIssue({
+      code: "custom",
+      message: "`reference.statut: \"facture\"` n'est valide que pour `reference.type: \"devis\"`.",
+      path: ["reference", "statut"],
+    });
+  }
+}
 
 export const DetailDocumentEntreeSchema = z
   .object({
@@ -179,7 +242,8 @@ export const DetailDocumentEntreeSchema = z
     avec_lignes: z.boolean().default(true),
   })
   .strict()
-  .superRefine(exigerExactementUn(["reference", "numero"]));
+  .superRefine(exigerExactementUn(["reference", "numero"]))
+  .superRefine(exigerCoherenceReferenceDocument);
 
 // --- 7. echeancier_clients (GC) ---------------------------------------------------------------
 

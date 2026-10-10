@@ -1,10 +1,10 @@
-import type { Famille } from "../../domain/capabilities.js";
 import type { Completude, RaisonArret } from "../../domain/envelope.js";
 import type { Dossier } from "../../config/dossiers.js";
 import type { ContexteHttp, DependancesClientHttp } from "../../http/client.js";
 import type { Clock } from "../../ports/clock.js";
 import type { ExecutionContext } from "../../ports/execution-context.js";
 import type { DepsScan } from "../../pagination/scan.js";
+import { FAMILLES_OUTIL, type OutilMetier } from "./capacites.js";
 import { erreurFamilleIncompatible } from "./erreurs.js";
 
 /**
@@ -57,13 +57,12 @@ export interface ResultatService<T> {
 /**
  * Garde de famille (D-T11-1, 07 §6) : refuse `UNSUPPORTED_CAPABILITY` **avant tout réseau** si le
  * dossier du contexte ou la famille HTTP ne correspond pas à l'une des familles acceptées par cet
- * outil. Un service ne lit jamais une autre famille que celle vérifiée ici.
+ * outil. Un service ne lit jamais une autre famille que celle vérifiée ici. Lit `FAMILLES_OUTIL`
+ * (`commun/capacites.ts`) plutôt que de recevoir la liste en paramètre, pour garder une seule
+ * source de vérité partagée avec le manifeste de capacités.
  */
-export function exigerFamilleOutil(
-  outil: string,
-  ctx: ContexteService,
-  famillesAcceptees: readonly Famille[],
-): void {
+export function exigerFamilleOutil(outil: OutilMetier, ctx: ContexteService): void {
+  const famillesAcceptees = FAMILLES_OUTIL[outil];
   if (ctx.dossier.famille !== ctx.http.famille) {
     throw erreurFamilleIncompatible(outil, ctx.dossier.famille, famillesAcceptees);
   }

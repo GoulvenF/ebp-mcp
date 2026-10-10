@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { capacitesCompta } from "../../../dist/index.js";
 import { manifesteCapacites, verifierCapacitesEntree } from "../../../dist/index.js";
 import type { CapaciteOutil } from "../../../dist/index.js";
+
+function motifCompta(nom: string): string {
+  const capacite = capacitesCompta().find((c) => c.nom === nom);
+  if (capacite?.motif === undefined) {
+    throw new Error(`Capacité Compta absente ou sans motif : ${nom}`);
+  }
+  return capacite.motif;
+}
 
 function trouver(famille: "hubbix-compta" | "hubbix-gescom", outil: string): CapaciteOutil {
   const capacite = manifesteCapacites(famille).find((c) => c.outil === outil);
@@ -92,6 +101,54 @@ describe("capacites.ts — D-T11-6 : chaque refus listé est présent dans le ma
     expect(() =>
       verifierCapacitesEntree("transactions_bancaires", "hubbix-compta", { statut: "valide" }),
     ).toThrowError();
+  });
+
+  it("detail_document.reference.type (6 types non livrés) : refusé par UNSUPPORTED_CAPABILITY, jamais atteint le réseau", () => {
+    const capacite = trouver("hubbix-gescom", "detail_document");
+    const option = capacite.optionsNonSupportees.find((o) => o.option === "reference.type");
+    expect(option).toBeDefined();
+    for (const type of ["commande", "bon_livraison", "bon_retour", "avenant", "situation", "devis_etude"]) {
+      expect(() =>
+        verifierCapacitesEntree("detail_document", "hubbix-gescom", {
+          reference: { id: "D1", type, statut: "provisoire" },
+        }),
+      ).toThrowError();
+      try {
+        verifierCapacitesEntree("detail_document", "hubbix-gescom", {
+          reference: { id: "D1", type, statut: "provisoire" },
+        });
+      } catch (erreur) {
+        expect(erreur).toMatchObject({ erreur: { code: "UNSUPPORTED_CAPABILITY" } });
+      }
+    }
+  });
+
+  it("detail_document.reference.type (type livré, ex. devis) : accepté", () => {
+    expect(() =>
+      verifierCapacitesEntree("detail_document", "hubbix-gescom", {
+        reference: { id: "D1", type: "devis", statut: "provisoire" },
+      }),
+    ).not.toThrow();
+  });
+
+  it("detail_document par `numero` (pas de `reference`) : aucun chemin imbriqué à lire, accepté", () => {
+    expect(() =>
+      verifierCapacitesEntree("detail_document", "hubbix-gescom", { numero: "FA1" }),
+    ).not.toThrow();
+  });
+});
+
+describe("capacites.ts — D-T11-6/D-T11-7 : les motifs CPT réutilisés sont identiques à ceux de l'adapter (T09), jamais redéfinis", () => {
+  it("transactions_bancaires.statut porte exactement le motif de `filtre_statut_bancaire`", () => {
+    const capacite = trouver("hubbix-compta", "transactions_bancaires");
+    const option = capacite.optionsNonSupportees.find((o) => o.option === "statut");
+    expect(option?.motif).toBe(motifCompta("filtre_statut_bancaire"));
+  });
+
+  it("echeancier_clients refusé sur un dossier hubbix-compta porte exactement le motif de `echeancier_cpt` (A03)", () => {
+    const capacite = trouver("hubbix-compta", "echeancier_clients");
+    expect(capacite.statut).toBe("non_supportee");
+    expect(capacite.motif).toBe(motifCompta("echeancier_cpt"));
   });
 });
 

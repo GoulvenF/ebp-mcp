@@ -288,6 +288,140 @@ describe("entrees.ts — critère : `SCHEMAS_ENTREE_OUTILS` couvre exactement le
   });
 });
 
+describe("entrees.ts — critère : `texte` vide ou blanc rejeté au niveau du schéma (D-T11-1/D-T11-4), avant tout scan", () => {
+  const OUTILS_AVEC_TEXTE: (keyof typeof SCHEMAS_ENTREE_OUTILS)[] = [
+    "rechercher_tiers",
+    "rechercher_articles",
+    "lister_documents_vente",
+    "lister_ecritures",
+  ];
+
+  for (const outil of OUTILS_AVEC_TEXTE) {
+    it(`\`${outil}\` : texte vide \`""\` ⇒ INVALID_ARGUMENT`, () => {
+      const schema = SCHEMAS_ENTREE_OUTILS[outil];
+      expect(() =>
+        validerEntree(schema, { ...ENTREES_MINIMALES_VALIDES[outil], texte: "" }, outil),
+      ).toThrowError();
+    });
+
+    it(`\`${outil}\` : texte composé uniquement d'espaces \`"   "\` ⇒ INVALID_ARGUMENT`, () => {
+      const schema = SCHEMAS_ENTREE_OUTILS[outil];
+      expect(() =>
+        validerEntree(schema, { ...ENTREES_MINIMALES_VALIDES[outil], texte: "   " }, outil),
+      ).toThrowError();
+      try {
+        validerEntree(schema, { ...ENTREES_MINIMALES_VALIDES[outil], texte: "   " }, outil);
+        throw new Error("ne doit pas atteindre ce point");
+      } catch (erreur) {
+        expect(erreur).toMatchObject({ erreur: { code: "INVALID_ARGUMENT" } });
+      }
+    });
+
+    it(`\`${outil}\` : texte non vide ⇒ accepté`, () => {
+      const schema = SCHEMAS_ENTREE_OUTILS[outil];
+      expect(() =>
+        validerEntree(schema, { ...ENTREES_MINIMALES_VALIDES[outil], texte: "abc" }, outil),
+      ).not.toThrow();
+    });
+  }
+});
+
+describe("entrees.ts — critère : combinaisons type/statut contradictoires de lister_documents_vente (D-T11-7)", () => {
+  it("statut: facture sans devis dans types ⇒ INVALID_ARGUMENT", () => {
+    expect(() =>
+      validerEntree(
+        ListerDocumentsVenteEntreeSchema,
+        { types: ["facture"], statut: "facture" },
+        "lister_documents_vente",
+      ),
+    ).toThrowError();
+  });
+
+  it("statut: facture avec devis inclus dans types ⇒ accepté", () => {
+    expect(() =>
+      validerEntree(
+        ListerDocumentsVenteEntreeSchema,
+        { types: ["facture", "devis"], statut: "facture" },
+        "lister_documents_vente",
+      ),
+    ).not.toThrow();
+  });
+
+  it("statut: valide avec types: [\"devis\"] seul ⇒ INVALID_ARGUMENT", () => {
+    expect(() =>
+      validerEntree(
+        ListerDocumentsVenteEntreeSchema,
+        { types: ["devis"], statut: "valide" },
+        "lister_documents_vente",
+      ),
+    ).toThrowError();
+  });
+
+  it("statut: valide avec types: [\"facture\"] ⇒ accepté", () => {
+    expect(() =>
+      validerEntree(
+        ListerDocumentsVenteEntreeSchema,
+        { types: ["facture"], statut: "valide" },
+        "lister_documents_vente",
+      ),
+    ).not.toThrow();
+  });
+
+  it("statut: facture sans `types` fourni ⇒ accepté (aucune combinaison jugée contradictoire)", () => {
+    expect(() =>
+      validerEntree(ListerDocumentsVenteEntreeSchema, { statut: "facture" }, "lister_documents_vente"),
+    ).not.toThrow();
+  });
+
+  it("statut: valide sans `types` fourni ⇒ accepté", () => {
+    expect(() =>
+      validerEntree(ListerDocumentsVenteEntreeSchema, { statut: "valide" }, "lister_documents_vente"),
+    ).not.toThrow();
+  });
+});
+
+describe("entrees.ts — critère : combinaisons reference.type/statut contradictoires de detail_document (D-T11-7)", () => {
+  it("{type: devis, statut: valide} ⇒ INVALID_ARGUMENT", () => {
+    expect(() =>
+      validerEntree(
+        DetailDocumentEntreeSchema,
+        { reference: { id: "D1", type: "devis", statut: "valide" } },
+        "detail_document",
+      ),
+    ).toThrowError();
+  });
+
+  it("{type: devis, statut: facture} ⇒ accepté", () => {
+    expect(() =>
+      validerEntree(
+        DetailDocumentEntreeSchema,
+        { reference: { id: "D1", type: "devis", statut: "facture" } },
+        "detail_document",
+      ),
+    ).not.toThrow();
+  });
+
+  it("{type: facture (≠ devis), statut: facture} ⇒ INVALID_ARGUMENT", () => {
+    expect(() =>
+      validerEntree(
+        DetailDocumentEntreeSchema,
+        { reference: { id: "D1", type: "facture", statut: "facture" } },
+        "detail_document",
+      ),
+    ).toThrowError();
+  });
+
+  it("{type: facture (≠ devis), statut: valide} ⇒ accepté", () => {
+    expect(() =>
+      validerEntree(
+        DetailDocumentEntreeSchema,
+        { reference: { id: "D1", type: "facture", statut: "valide" } },
+        "detail_document",
+      ),
+    ).not.toThrow();
+  });
+});
+
 describe("entrees.ts — critère : exercices n'a aucun champ spécifique", () => {
   it("entrée vide acceptée", () => {
     expect(() => validerEntree(ExercicesEntreeSchema, {}, "exercices")).not.toThrow();

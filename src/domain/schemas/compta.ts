@@ -91,9 +91,11 @@ export const TransactionBancaireSchema = z.object({
 /**
  * Agrégat de balance par compte (07 §8) : `solde = debit − credit`. Extension additive D-T11-12 :
  * `lignes` = nombre de lignes de mouvement parcourues pour ce compte (jamais une donnée EBP
- * séparée, dérivée du parcours local) ; `incomplet: true` quand le parcours d'agrégat qui a
- * produit cette ligne s'est arrêté avant la fin de la source (budget/quota/deadline/source
- * incomplète) — le solde affiché n'est alors jamais déclaré exhaustif (07 §5).
+ * séparée, dérivée du parcours local) ; `incomplet: true` quand au moins une ligne de **ce
+ * compte** a été exclue des totaux (deux côtés `débit`/`crédit` `null`, ou montant invalide
+ * signalé par l'adapter) — ce n'est pas un indicateur d'arrêt du parcours global : un parcours
+ * interrompu (budget/quota/deadline/source incomplète) se lit sur `completude`/`raison_arret` du
+ * résultat `balance_comptes`, pas sur ce champ par compte.
  */
 export const LigneBalanceSchema = z.object({
   compte: CompteSchema,
