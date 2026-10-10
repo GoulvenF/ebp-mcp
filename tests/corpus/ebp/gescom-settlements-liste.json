@@ -1,0 +1,83 @@
+{
+  "id": "gescom-settlements-liste",
+  "famille": "hubbix-gescom",
+  "route": "/settlements",
+  "forme_enveloppe": "elements",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /settlements",
+    "consulte_le": "2026-10-09"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": [],
+  "couverture": ["enum-inconnu"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/settlements",
+    "parametres": { "skip": 0, "take": 50 }
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "elements": [
+        {
+          "code": "RG-001",
+          "date": "2026-02-20",
+          "customerName": "Client Iota",
+          "amount": "500.00",
+          "stillToBeDistributedAmount": "0.00",
+          "paymentModeLabel": "Chèque",
+          "paymentReference": "CHQ123",
+          "settlementType": 1
+        },
+        {
+          "code": "RG-002",
+          "date": "2026-02-21",
+          "customerName": "Client Kappa",
+          "amount": "200.00",
+          "stillToBeDistributedAmount": "50.00",
+          "paymentModeLabel": "Virement",
+          "paymentReference": "VIR456",
+          "settlementType": 9
+        }
+      ],
+      "take": 50,
+      "skip": 0,
+      "total": 2
+    }
+  },
+  "attentes": {
+    "description": "`/settlements` (A14) : `tiers_id` toujours `null`, la source ne fournit qu'un nom client. `settlementType=9` hors de `SettlementType` (`CashReceipt=1`, `Reimbursement=2`, 02 §3) ⇒ `inconnu` + avertissement citant `9` sans le requalifier en chaîne.",
+    "resultats": [
+      {
+        "code": "RG-001",
+        "date": "2026-02-20",
+        "tiers_nom": "Client Iota",
+        "tiers_id": null,
+        "montant": "500",
+        "devise": null,
+        "montant_restant_a_affecter": "0",
+        "mode_paiement_libelle": "Chèque",
+        "reference": "CHQ123",
+        "type": "encaissement"
+      },
+      {
+        "code": "RG-002",
+        "date": "2026-02-21",
+        "tiers_nom": "Client Kappa",
+        "tiers_id": null,
+        "montant": "200",
+        "devise": null,
+        "montant_restant_a_affecter": "50",
+        "mode_paiement_libelle": "Virement",
+        "reference": "VIR456",
+        "type": "inconnu"
+      }
+    ],
+    "pagination": { "renvoyes": 2, "total": null, "total_source": 2, "hasMore": false, "curseur": null },
+    "avertissements": ["Valeur enum inconnue reçue de la source pour settlementType : 9"],
+    "erreur": null
+  },
+  "notes": "Un filtre par ID tiers est refusé avant tout réseau (`UNSUPPORTED_CAPABILITY`) : testé séparément, cette route ne le documente pas."
+}

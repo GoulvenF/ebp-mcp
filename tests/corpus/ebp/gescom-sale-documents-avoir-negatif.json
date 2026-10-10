@@ -10,12 +10,19 @@
   },
   "statut": "documente",
   "observe_le": null,
-  "preuves_liees": ["E10"],
-  "couverture": ["avoir-negatif"],
+  "preuves_liees": [
+    "E10"
+  ],
+  "couverture": [
+    "avoir-negatif"
+  ],
   "requete_attendue": {
     "methode": "GET",
     "chemin": "/sale-documents",
-    "parametres": { "skip": 0, "take": 50 }
+    "parametres": {
+      "skip": 0,
+      "take": 50
+    }
   },
   "reponse_ebp": {
     "statut_http": 200,
@@ -51,18 +58,24 @@
         "tiers_id": null,
         "date": "2026-03-12",
         "numero": "AV2026-003",
-        "montant_ht": "-20.00",
-        "montant_ttc": "-24.00",
-        "montant_net_ttc": "-24.00",
+        "montant_ht": "-20",
+        "montant_ttc": "-24",
+        "montant_net_ttc": "-24",
         "devise": null,
-        "reste_du": "0.00",
+        "reste_du": "0",
         "statut_comptable": "accounted",
         "lignes": null
       }
     ],
-    "pagination": { "renvoyes": 1, "total": null, "total_source": 1, "hasMore": false, "curseur": null },
+    "pagination": {
+      "renvoyes": 1,
+      "total": null,
+      "total_source": 1,
+      "hasMore": false,
+      "curseur": null
+    },
     "avertissements": [],
     "erreur": null
   },
-  "notes": "Convention de signe des avoirs (E10, preuve non apportée côté fournisseur) : ici `deja_negatif`, `normaliserSigneAvoir` ne doit pas être appelée une seconde fois."
+  "notes": "Convention de signe des avoirs (E10, preuve non apportée côté fournisseur) : ici `deja_negatif`, `normaliserSigneAvoir` ne doit pas être appelée une seconde fois. Attentes corrigées en forme décimale canonique (decimalDepuisLexeme supprime les zéros de fin insignifiants, 07 §5) : -20.00→-20, -24.00→-24, 0.00→0."
 }

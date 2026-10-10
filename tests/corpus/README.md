@@ -31,8 +31,11 @@ prouver qu'un mapper réel produit exactement cette sortie à partir de `reponse
 
 1. Choisir un `id` stable en kebab-case, unique dans le corpus.
 2. Déterminer la forme réelle de `reponse_ebp.corps` (`data`, `elements`, `linesEntries`,
-   `tableau_nu` ou `erreur`) — elle doit être vérifiable par
-   `determinerFormeEnveloppeReelle` (`src/fixtures/manifeste.ts`), pas seulement déclarée.
+   `tableau_nu`, `erreur` ou `fiche` — objet nu sans enveloppe de liste, p. ex. détail client,
+   article ou document de vente) — elle doit être vérifiable par
+   `determinerFormeEnveloppeReelle` (`src/fixtures/manifeste.ts`), pas seulement déclarée. `fiche`
+   exige une signature positive (présence de `id`, `code` ou `documentType`) : un corps sans
+   aucune de ces clés n'est jamais reconnu comme `fiche`.
 3. Citer la source officielle (`source.url`, `section`, `consulte_le`) et les preuves fournisseur
    assumées (`preuves_liees`, identifiants `Exx` de [09](../../docs/09-preuves-et-recette.md)).
 4. Choisir au moins un marqueur de `couverture` parmi l'ensemble fermé défini dans
