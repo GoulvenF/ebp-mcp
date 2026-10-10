@@ -1,8 +1,9 @@
 # Corpus de fixtures EBP (`tests/corpus/ebp/`)
 
 Un fichier JSON par fixture, validé par `src/fixtures/manifeste.ts` et chargé par
-`src/fixtures/chargeur.ts`. Consommé par `tests/corpus.test.ts` et, plus tard, par les adapters
-mock de T09/T10.
+`src/fixtures/chargeur.ts`. Consommé par `tests/corpus.test.ts` et par les adapters mock
+(`src/adapters/hubbix-gescom/` depuis T10a, `src/adapters/compta/` depuis T09) via leurs tests
+dédiés (`tests/adapters/*/`).
 
 ## Règle de provenance
 
@@ -24,18 +25,23 @@ comme une validation de l'API EBP réelle.
 ## La sortie attendue est calculée à la main
 
 Le champ `attentes` (sortie métier attendue) de chaque fixture est écrit à la main, indépendamment
-de tout mapper. Aucun mapper n'est exécuté pour produire ces valeurs — T09/T10 devront, plus tard,
-prouver qu'un mapper réel produit exactement cette sortie à partir de `reponse_ebp`.
+de tout mapper, **au moment où la fixture est ajoutée au corpus**. Les tests d'adapter
+(`tests/adapters/hubbix-gescom/`, `tests/adapters/compta/`) prouvent ensuite qu'un mapper réel
+produit exactement cette sortie à partir de `reponse_ebp` ; une fixture dont les `attentes`
+changent de contrat (ex. D-T09-1/2 sur `compta-lines-entries`) le documente dans son champ `notes`.
 
 ## Ajouter une fixture
 
 1. Choisir un `id` stable en kebab-case, unique dans le corpus.
 2. Déterminer la forme réelle de `reponse_ebp.corps` (`data`, `elements`, `linesEntries`,
-   `tableau_nu`, `erreur` ou `fiche` — objet nu sans enveloppe de liste, p. ex. détail client,
-   article ou document de vente) — elle doit être vérifiable par
+   `tableau_nu`, `fiche` ou `erreur`) — elle doit être vérifiable par
    `determinerFormeEnveloppeReelle` (`src/fixtures/manifeste.ts`), pas seulement déclarée. `fiche`
-   exige une signature positive (présence de `id`, `code` ou `documentType`) : un corps sans
-   aucune de ces clés n'est jamais reconnu comme `fiche`.
+   couvre un objet nu sans enveloppe de liste (détail article/client/document de vente côté GC ;
+   `/domain-information`, `/folder-settings`, `/auxiliary-accounts/{number}`,
+   `/general-account/{number}`, `/journals/{code}`, `/entries/{uuid}` côté CPT, T09 D-T09-8).
+   `fiche` exige une signature positive : présence de `id`, `code` ou `documentType` (GC, T10b) ou
+   de `uuid`, `domainName` ou `exercices` (CPT, T09 D-T09-9) — un corps sans aucune de ces clés
+   n'est jamais reconnu comme `fiche`.
 3. Citer la source officielle (`source.url`, `section`, `consulte_le`) et les preuves fournisseur
    assumées (`preuves_liees`, identifiants `Exx` de [09](../../docs/09-preuves-et-recette.md)).
 4. Choisir au moins un marqueur de `couverture` parmi l'ensemble fermé défini dans

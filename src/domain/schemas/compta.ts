@@ -34,6 +34,32 @@ export const LigneEcritureSchema = z.object({
   lettrage: z.string().nullable(),
 });
 
+/**
+ * Ligne issue d'une route de **liste** (`/lines-entries`, `/search-entries/entries`) — D-T09-1 (T09).
+ * Distinct de `LigneEcritureSchema` : ni l'une ni l'autre de ces deux routes ne documente l'UUID
+ * d'écriture (02 §2) ; `ecriture_id` reste `null` ici, jamais un identifiant fabriqué. `id` est un
+ * identifiant **local** dérivé du contenu de la ligne (D-T09-2, voir `src/adapters/compta/lignes.ts`),
+ * non une identité EBP, non réutilisable pour relire la ligne chez EBP. `journal`/`date`/`mode`
+ * proviennent de `entry{journal,date,entryMode}` sur `/lines-entries` uniquement ; `null` sur
+ * `/search-entries/entries`, qui ne documente pas ces champs.
+ */
+export const LigneEcritureListeSchema = z.object({
+  id: z.string(),
+  ecriture_id: z.string().nullable(),
+  journal: z.string().nullable(),
+  date: DateCivileSchema.nullable(),
+  mode: z.enum(["provisoire", "valide", "inconnu"]).nullable(),
+  compte_general: CompteSchema.nullable(),
+  compte_tiers: CompteSchema.nullable(),
+  libelle: z.string().nullable(),
+  debit: DecimalStringSchema.nullable(),
+  credit: DecimalStringSchema.nullable(),
+  piece: z.string().nullable(),
+  document: z.string().nullable(),
+  echeance: DateCivileSchema.nullable(),
+  lettrage: z.string().nullable(),
+});
+
 /** Écriture complète (`/entries/{uuid}`, 02 §2). */
 export const EcritureSchema = z.object({
   id: z.string(),
@@ -92,4 +118,64 @@ export const ExerciceSchema = z.object({
   date_debut: DateCivileSchema,
   date_fin: DateCivileSchema,
   date_cloture: DateCivileSchema.nullable(),
+});
+
+/** `/domain-information` (02 §2) : `{domainName, domainCode, version}`, ne liste pas les dossiers. */
+export const InformationDomaineSchema = z.object({
+  nom: z.string().nullable(),
+  code: z.string().nullable(),
+  version: z.string().nullable(),
+});
+
+/**
+ * `/folder-settings` (02 §2) : seuls `exercices[]` et `entry.mode` ont un chemin de champ
+ * exact dans la documentation ; « longueurs de comptes » et « types de tiers » n'y sont décrits
+ * qu'en prose, sans nom de champ JSON vérifiable — non mappés ici plutôt qu'inventés (T09).
+ */
+export const ParametresDossierSchema = z.object({
+  exercices: z.array(ExerciceSchema),
+  mode_saisie: z.enum(["provisoire", "valide", "inconnu"]).nullable(),
+});
+
+/**
+ * `/auxiliary-account-types` (02 §2, prose uniquement : « Clients C/411, Fournisseurs F/401,
+ * Salariés S/421, Organismes O/437, Autres A/467 ») : forme normalisée conservant le code et le
+ * compte collectif source, jamais déduits d'un préfixe de compte (D-T09-6).
+ */
+export const TypeCompteAuxiliaireSchema = z.object({
+  code: z.enum(["C", "F", "S", "O", "A", "inconnu"]),
+  code_source: z.string().nullable(),
+  compte_collectif: CompteSchema.nullable(),
+});
+
+/** `/general-account` (02 §2) : `{data:[{uuid,number,label,active,collective,racine}]}`. */
+export const CompteGeneralSchema = z.object({
+  id: z.string().nullable(),
+  numero: CompteSchema,
+  libelle: z.string().nullable(),
+  actif: z.boolean().nullable(),
+  collectif: z.boolean().nullable(),
+  racine: z.boolean().nullable(),
+});
+
+/**
+ * `/journals` (02 §2) : `{data:[{uuid,code,name,journalType{name},counterpartAccount…}]}`.
+ * `type` normalisé (D-T09-6) ; `type_source` conserve `journalType.name` tel que reçu, même
+ * quand `type` est reconnu.
+ */
+export const JournalSchema = z.object({
+  id: z.string().nullable(),
+  code: z.string(),
+  nom: z.string().nullable(),
+  type: z.enum(["achats", "ventes", "tresorerie", "operations_diverses", "a_nouveaux", "inconnu"]).nullable(),
+  type_source: z.string().nullable(),
+  compte_contrepartie: CompteSchema.nullable(),
+});
+
+/** `/vat-rate` CPT (02 §2) : `{data:[{designation, rate, isActive, territoriality}]}`. */
+export const TauxTvaCptSchema = z.object({
+  designation: z.string().nullable(),
+  taux: DecimalStringSchema.nullable(),
+  actif: z.boolean().nullable(),
+  territorialite: z.string().nullable(),
 });

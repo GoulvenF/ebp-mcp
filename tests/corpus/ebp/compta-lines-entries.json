@@ -39,24 +39,30 @@
     }
   },
   "attentes": {
-    "description": "Ligne d'écriture CPT mappée vers le modèle T01 : `id` de ligne distinct de `ecriture_id` (A26), échéance et lettrage conservés.",
+    "description": "Ligne de `/lines-entries` mappée en `LigneEcritureListe` (D-T09-1/2) : `ecriture_id` à `null` (aucun UUID documenté à ce niveau), `journal`/`date`/`mode` issus de `entry{…}`, `id` dérivé du contenu source (préfixe `local:`, non une identité EBP).",
     "resultats": [
       {
-        "id": "411000-1",
-        "ecriture_id": "ecriture-2026-03-05-VE-1",
+        "id": "local:d0d3c9ba87a922f3-1",
+        "ecriture_id": null,
+        "journal": "VE",
+        "date": "2026-03-05",
+        "mode": "valide",
         "compte_general": "411000",
         "compte_tiers": null,
         "libelle": "Vente mars",
-        "debit": "100.00",
+        "debit": "100",
         "credit": null,
         "piece": "FA2026-010",
+        "document": null,
         "echeance": "2026-04-05",
         "lettrage": "A"
       }
     ],
     "pagination": { "renvoyes": 1, "total": null, "total_source": null, "hasMore": false, "curseur": null },
-    "avertissements": [],
+    "avertissements": [
+      "/lines-entries ne documente aucun UUID d'écriture (02 §2) : `ecriture_id` laissé à null pour toutes les lignes de cette réponse (D-T09-1)."
+    ],
     "erreur": null
   },
-  "notes": "Le wrapper source n'expose pas d'`id` de ligne stable ; T09 devra documenter la construction retenue. `ecriture_id` ici est un identifiant de substitution hors scope de cette tâche."
+  "notes": "`attentes` mises à jour par T09 (D-T09-1/2) : cette fixture délègue explicitement à T09 la décision sur `ecriture_id` et la construction de `id`. `debit` \"100.00\" source devient \"100\" après `decimalDepuisLexeme` (Big.js normalise les zéros de fin, D-T09-3)."
 }

@@ -1,0 +1,71 @@
+{
+  "id": "compta-entry-detail",
+  "famille": "hubbix-compta",
+  "route": "/entries/{uuid}",
+  "forme_enveloppe": "fiche",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §2 Hubbix Comptabilité TPE — /entries/{uuid}",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": ["E06", "E07"],
+  "couverture": ["champs-null"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/entries/660e8400-e29b-41d4-a716-446655440020",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "uuid": "660e8400-e29b-41d4-a716-446655440020",
+      "journal": "VE",
+      "date": "2026-03-10",
+      "entryMode": "Validé",
+      "lines": [
+        {
+          "generalAccount": "411000",
+          "auxiliaryAccount": "4010001",
+          "label": "Facture mars",
+          "debit": "250.00",
+          "credit": null,
+          "piece": "FA2026-020",
+          "document": null,
+          "deadline": "2026-04-10",
+          "lettering": null
+        }
+      ]
+    }
+  },
+  "attentes": {
+    "description": "Écriture complète (D-T09-1) : `ecriture_id` de chaque ligne = l'UUID du segment de route, jamais sur les routes de liste. `id` de ligne dérivé du contenu source (D-T09-2), distinct de `ecriture_id`.",
+    "resultats": [
+      {
+        "id": "660e8400-e29b-41d4-a716-446655440020",
+        "journal": "VE",
+        "date": "2026-03-10",
+        "mode": "valide",
+        "lignes": [
+          {
+            "id": "local:738ad95af65d8f9a-1",
+            "ecriture_id": "660e8400-e29b-41d4-a716-446655440020",
+            "compte_general": "411000",
+            "compte_tiers": "4010001",
+            "libelle": "Facture mars",
+            "debit": "250",
+            "credit": null,
+            "piece": "FA2026-020",
+            "echeance": "2026-04-10",
+            "lettrage": null
+          }
+        ]
+      }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Fixture créée en T09 (D-T09-1/2)."
+}

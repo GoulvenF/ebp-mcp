@@ -1,0 +1,36 @@
+{
+  "id": "compta-auxiliary-account-types",
+  "famille": "hubbix-compta",
+  "route": "/auxiliary-account-types",
+  "forme_enveloppe": "data",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §2 Hubbix Comptabilité TPE — /auxiliary-account-types",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": ["E07"],
+  "couverture": ["enveloppe-data"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/auxiliary-account-types",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "data": [{ "code": "C", "collectiveAccount": "411" }]
+    }
+  },
+  "attentes": {
+    "description": "Référentiel non pagine (02 §2, prose) : wrapper `{data:[...]}` non prouvé par un échantillon JSON (D-T09-8, aucun `totalRecords`), code et compte collectif source conservés sans déduction depuis un préfixe de compte.",
+    "resultats": [
+      { "code": "C", "code_source": "C", "compte_collectif": "411" }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Fixture créée en T09 (D-T09-6/D-T09-8) : forme de wrapper supposée, à vérifier en préprod (E07)."
+}

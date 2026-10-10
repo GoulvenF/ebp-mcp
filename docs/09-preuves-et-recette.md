@@ -12,7 +12,7 @@
 | E04 | Reset journalier, 429 et quota identité | Fuseau/période et headers de réponse documentés ; ne pas épuiser volontairement un quota pour tester | T15 / quota | inconnu |
 | E05 | Dossiers et droits | Origine des IDs Hubbix, dossier autorisé et dossier refusé ; distinction prod/préprod | T15 / config | inconnu |
 | E06 | Pagination et tris Hubbix | ≥2 pages, dernière page, max page, total, propriétés de tri réellement acceptées, stabilité des dates égales | T15 / recherche | documenté en partie |
-| E07 | Comptabilité : catégories et banque | Types réels `category`, `nature`, filtres comptes exact/préfixe, status banque, nulls et lettrage partiel | T15 / CPT | inconnu |
+| E07 | Comptabilité : catégories et banque | Types réels `category`, `nature`, filtres comptes exact/préfixe, status banque, nulls et lettrage partiel ; forme exacte des montants CPT (nombre JSON ou chaîne, nombre de décimales) sur `debit`/`credit`/`rate` (T09, D-T09-3) ; forme réelle du wrapper `/auxiliary-account-types` (supposition `{data:[...]}` non prouvée, T09) | T15 / CPT | inconnu |
 | E08 | SaaS : schéma et droits | Colonnes/types/null/devise par objet, export schéma standard, champ hasRight refusé | T16 / SaaS | inconnu |
 | E09 | SaaS : routes et dates | Orthographe Items ; un jour inclusif, date limite, date future ; pagination avec tri unique | T16 / SaaS | inconnu |
 | E10 | GC : montants et dashboards | Convention signe avoirs, unité monétaire, période réelle des dashboards, sens échu/à-échoir | T15/T21/T22 | inconnu |
@@ -30,8 +30,8 @@ réponse réelle d'EBP — ce tableau ne change pas l'état des lignes ci-dessus
 
 | Preuve | Fixtures du corpus |
 |---|---|
-| E06 | `compta-tiers-liste-data`, `compta-lines-entries`, `gescom-items-page-vide`, `gescom-items-pagination-invalide` |
-| E07 | `compta-search-entries-tableau-nu` |
+| E06 | `compta-tiers-liste-data`, `compta-lines-entries`, `compta-general-account-liste`, `compta-journals`, `gescom-items-page-vide`, `gescom-items-pagination-invalide` |
+| E07 | `compta-search-entries-tableau-nu`, `compta-domain-information`, `compta-folder-settings`, `compta-auxiliary-account-types`, `compta-auxiliary-account-detail`, `compta-general-account-detail`, `compta-entry-detail`, `compta-bank-transactions`, `compta-vat-rate` |
 | E10 | `gescom-sale-documents-avoir-negatif`, `gescom-sale-commitments-fenetre-un-jour` |
 
 ## Format de preuve

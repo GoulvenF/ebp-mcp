@@ -19,6 +19,22 @@ describe("src/fixtures/manifeste.ts — determinerFormeEnveloppeReelle : signatu
     expect(determinerFormeEnveloppeReelle({ documentType: "SaleInvoice", documentStatus: 0 })).toBe("fiche");
   });
 
+  it("présence de `uuid` (fiche CPT : compte général, compte tiers, écriture) ⇒ `fiche` (D-T09-9)", () => {
+    expect(determinerFormeEnveloppeReelle({ uuid: "cpt-1", number: "411000" })).toBe("fiche");
+  });
+
+  it("présence de `domainName` (`/domain-information`) ⇒ `fiche` (D-T09-9)", () => {
+    expect(determinerFormeEnveloppeReelle({ domainName: "Dossier", domainCode: "D1" })).toBe("fiche");
+  });
+
+  it("présence de `exercices` (`/folder-settings`) ⇒ `fiche` (D-T09-9)", () => {
+    expect(determinerFormeEnveloppeReelle({ exercices: [], entry: {} })).toBe("fiche");
+  });
+
+  it("objet sans `id`/`code`/`documentType`/`uuid`/`domainName`/`exercices` ⇒ forme non reconnue (`null`) (D-T09-9)", () => {
+    expect(determinerFormeEnveloppeReelle({ foo: "bar", number: "411000" })).toBeNull();
+  });
+
   it("tableau nu, enveloppes `elements`/`data`/`linesEntries` et erreur restent prioritaires sur `fiche`", () => {
     expect(determinerFormeEnveloppeReelle([])).toBe("tableau_nu");
     expect(determinerFormeEnveloppeReelle({ elements: [], total: 0 })).toBe("elements");

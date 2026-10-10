@@ -103,11 +103,21 @@ export type ManifesteFixture = z.infer<typeof ManifesteFixtureSchema>;
 
 /**
  * Clés dont la présence signe une fiche (objet nu sans enveloppe de liste) : `id`/`code` pour les
- * fiches client et article, `documentType` pour l'en-tête d'un document de vente détaillé (T10b).
- * Sert de garde-fou à `determinerFormeEnveloppeReelle` — sans ça, tout objet non reconnu (y
- * compris un corps mal formé) retomberait silencieusement sur `fiche`.
+ * fiches client et article, `documentType` pour l'en-tête d'un document de vente détaillé (T10b) ;
+ * `uuid` pour les fiches CPT (`/general-account/{numero}`, `/auxiliary-accounts/{number}`,
+ * `/entries/{uuid}`), `domainName` pour `/domain-information`, `exercices` pour
+ * `/folder-settings` (T09 D-T09-9, 02 §2). Sert de garde-fou à `determinerFormeEnveloppeReelle` —
+ * sans ça, tout objet non reconnu (y compris un corps mal formé) retomberait silencieusement sur
+ * `fiche`.
  */
-const CLES_DISCRIMINANTES_FICHE = ["id", "code", "documentType"] as const;
+const CLES_DISCRIMINANTES_FICHE = [
+  "id",
+  "code",
+  "documentType",
+  "uuid",
+  "domainName",
+  "exercices",
+] as const;
 
 /**
  * Détermine la forme réelle de `reponse_ebp.corps` par inspection structurelle (02 §1 : trois
@@ -126,7 +136,11 @@ export function determinerFormeEnveloppeReelle(corps: unknown): FormeEnveloppe |
   if (Array.isArray(objet.linesEntries)) {
     return "linesEntries";
   }
-  if (Array.isArray(objet.data) && "totalRecords" in objet) {
+  // D-T09-8 (T09) : extension additive — `totalRecords` n'est pas toujours présent
+  // (`/journals`, `/general-account`, `/vat-rate`, `/auxiliary-account-types` : 02 §2 ne documente
+  // aucun total pour ces référentiels). La discrimination des fixtures déjà au corpus (toutes avec
+  // `totalRecords`) reste inchangée : ce test est un sur-ensemble strict du précédent.
+  if (Array.isArray(objet.data)) {
     return "data";
   }
   if (Array.isArray(objet.elements) && "total" in objet) {

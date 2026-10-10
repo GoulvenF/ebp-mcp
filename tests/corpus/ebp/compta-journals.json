@@ -1,0 +1,38 @@
+{
+  "id": "compta-journals",
+  "famille": "hubbix-compta",
+  "route": "/journals",
+  "forme_enveloppe": "data",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §2 Hubbix Comptabilité TPE — /journals",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": ["E06"],
+  "couverture": ["enveloppe-data"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/journals",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "data": [
+        { "uuid": "jrn-1", "code": "VE", "name": "Ventes", "journalType": { "name": "Ventes" }, "counterpartAccount": "411000" }
+      ]
+    }
+  },
+  "attentes": {
+    "description": "Référentiel sans pagination documentée (D-T09-8) : `journalType.name` normalisé (D-T09-6), `type_source` conserve la valeur reçue telle quelle.",
+    "resultats": [
+      { "id": "jrn-1", "code": "VE", "nom": "Ventes", "type": "ventes", "type_source": "Ventes", "compte_contrepartie": "411000" }
+    ],
+    "pagination": { "renvoyes": 1, "total": null, "total_source": null, "hasMore": false, "curseur": null },
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Fixture créée en T09 (D-T09-6/D-T09-8)."
+}

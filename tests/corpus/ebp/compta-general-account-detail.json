@@ -1,0 +1,41 @@
+{
+  "id": "compta-general-account-detail",
+  "famille": "hubbix-compta",
+  "route": "/general-account/{numero}",
+  "forme_enveloppe": "fiche",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §2 Hubbix Comptabilité TPE — /general-account/{numero}",
+    "consulte_le": "2026-10-06"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": ["E07"],
+  "couverture": ["champs-null"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/general-account/706000",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "uuid": "acc-uuid-2",
+      "number": "706000",
+      "label": "Prestations de services",
+      "active": true,
+      "collective": false,
+      "racine": null
+    }
+  },
+  "attentes": {
+    "description": "Fiche `/general-account/{numero}` : `taxType`/`operationType` documentés par 02 mais non mappés (hors périmètre T09 défini) ; `racine` explicitement absente côté source conservée `null`.",
+    "resultats": [
+      { "id": "acc-uuid-2", "numero": "706000", "libelle": "Prestations de services", "actif": true, "collectif": false, "racine": null }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Fixture créée en T09 (D-T09-8)."
+}
