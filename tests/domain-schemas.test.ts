@@ -137,6 +137,8 @@ describe("schémas compta (point 12)", () => {
       solde_debiteur: "100.00",
       solde_crediteur: "0",
       devise: null,
+      lignes: 1,
+      incomplet: false,
     };
     expect(() => LigneBalanceSchema.parse(ligne)).not.toThrow();
   });
