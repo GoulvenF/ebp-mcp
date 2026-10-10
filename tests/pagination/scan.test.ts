@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   CacheSource,
   MagasinCurseurs,
+  creerBudget,
   scanner,
 } from "../../dist/index.js";
-import type { DepsScan, PageSource } from "../../dist/index.js";
+import type { Budget, DepsScan, PageSource } from "../../dist/index.js";
 import type { ElementFactice } from "./fixtures.js";
 import {
   contexteTest,
@@ -264,5 +265,107 @@ describe("scan.ts — critère #13 : taille de sortie bornée et validation de `
       scanner(depsDe(), { contexte: contexteTest(), source, limite: 501, identite: identiteTest({ limite: 501 }) }),
     ).rejects.toMatchObject({ erreur: { code: "INVALID_ARGUMENT" } });
     expect(source.appels).toBe(0);
+  });
+});
+
+describe("scan.ts — D-T11-2 : budget partagé explicite entre deux appels de `scanner`", () => {
+  it("deux appels successifs partageant le même `Budget` ne consomment jamais plus que le budget initial cumulé", async () => {
+    const page1: PageSource<ElementFactice> = { elements: elements(1), suivant: null, totalSource: 1 };
+    const page2: PageSource<ElementFactice> = { elements: elements(2), suivant: null, totalSource: 1 };
+    const source1 = creerSourceFacticeConsommantBudget([page1], { coutParPage: 1 });
+    const source2 = creerSourceFacticeConsommantBudget([page2], { coutParPage: 1 });
+    const deps = depsDe();
+    // Budget initial de 1 tentative seulement, explicitement partagé entre les deux appels.
+    const budget: Budget = creerBudget(contexteTest({ budgetRestant: 1 }));
+
+    const premier = await scanner(deps, {
+      contexte: contexteTest(),
+      budget,
+      source: source1,
+      limite: 50,
+      identite: identiteTest(),
+    });
+    expect(premier.resultats.map((e) => e.id)).toEqual(["e1"]);
+    expect(budget.restant).toBe(0);
+
+    const second = await scanner(deps, {
+      contexte: contexteTest(),
+      budget,
+      source: source2,
+      limite: 50,
+      identite: identiteTest(),
+    });
+    // Le budget partagé est déjà épuisé par le premier appel : le second ne lit aucune page.
+    expect(source2.appels).toBe(0);
+    expect(second.resultats).toEqual([]);
+    expect(second.raisonArret).toBe("budget");
+    expect(budget.restant).toBe(0);
+  });
+});
+
+describe("scan.ts — D-T11-3 : `sansCurseur: true`", () => {
+  it("hasMore vrai mais pagination.curseur reste null, rien n'est enregistré dans le magasin", async () => {
+    const page: PageSource<ElementFactice> = { elements: elements(1, 2, 3), suivant: { page: 2 }, totalSource: 10 };
+    const source = creerSourceFactice([page]);
+    const deps = depsDe();
+    const resultat = await scanner(deps, {
+      contexte: contexteTest(),
+      source,
+      limite: 1,
+      sansCurseur: true,
+      identite: identiteTest({ limite: 1 }),
+    });
+    expect(resultat.pagination.hasMore).toBe(true);
+    expect(resultat.pagination.curseur).toBeNull();
+    expect((deps.curseurs as unknown as { etats: Map<string, unknown> }).etats.size).toBe(0);
+  });
+});
+
+describe("scan.ts — D-T11-8 : `filtreApresEnrichissement`", () => {
+  it("élément enrichi puis rejeté : absent de `resultats`, non compté dans `pagination.total`, jamais relu après reprise", async () => {
+    const page1: PageSource<ElementFactice> = {
+      elements: [
+        { id: "rej", valeur: 1 },
+        { id: "acc1", valeur: 2 },
+      ],
+      suivant: { page: 2 },
+      totalSource: 4,
+    };
+    // La page 2 renvoie à nouveau "rej" (simule un chevauchement upstream) ainsi qu'un nouvel élément.
+    const page2: PageSource<ElementFactice> = {
+      elements: [
+        { id: "rej", valeur: 1 },
+        { id: "acc2", valeur: 2 },
+      ],
+      suivant: null,
+      totalSource: 4,
+    };
+    const source = creerSourceFactice([page1, page2]);
+    const deps = depsDe();
+    const identite = identiteTest({ limite: 1 });
+
+    const premier = await scanner(deps, {
+      contexte: contexteTest(),
+      source,
+      limite: 1,
+      identite,
+      filtreApresEnrichissement: (e) => e.id !== "rej",
+    });
+    expect(premier.resultats.map((e) => e.id)).toEqual(["acc1"]);
+    expect(premier.completude).toBe("page");
+    expect(premier.pagination.curseur).not.toBeNull();
+
+    const second = await scanner(deps, {
+      contexte: contexteTest(),
+      source,
+      limite: 1,
+      curseur: premier.pagination.curseur as string,
+      identite,
+      filtreApresEnrichissement: (e) => e.id !== "rej",
+    });
+    // "rej" a déjà été marqué vu lors du premier appel : il n'est jamais relu ni recompté.
+    expect(second.resultats.map((e) => e.id)).toEqual(["acc2"]);
+    expect(second.completude).toBe("complete");
+    expect(second.pagination.total).toBe(2);
   });
 });

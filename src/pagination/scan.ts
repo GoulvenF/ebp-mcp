@@ -1,6 +1,5 @@
 import type { Environnement, Famille } from "../domain/capabilities.js";
 import type { Completude, Pagination, RaisonArret } from "../domain/envelope.js";
-import type { ErreurMetier } from "../domain/errors.js";
 import type { Budget } from "../http/budget.js";
 import { creerBudget } from "../http/budget.js";
 import type { Clock } from "../ports/clock.js";
@@ -8,8 +7,14 @@ import type { ExecutionContext } from "../ports/execution-context.js";
 import { CacheSource } from "./cache.js";
 import { MagasinCurseurs } from "./curseurs.js";
 import type { EtatCurseur } from "./curseurs.js";
-import { erreurLimiteInvalide, erreurPaginationUpstreamInvalide, erreurScanAnnule } from "./errors.js";
-import type { PageSource, PositionSource, SourcePaginee } from "./source-page.js";
+import { erreurLimiteInvalide, erreurScanAnnule } from "./errors.js";
+import {
+  budgetOuDeadlineEpuises,
+  empreinteCanonique,
+  lirePageGardee,
+  raisonArretDepuisErreur,
+} from "./lecture-page.js";
+import type { PositionSource, SourcePaginee } from "./source-page.js";
 
 /**
  * Identité normalisée d'un parcours (07 §5) : lie le curseur et la clé de cache à l'outil, au
@@ -41,6 +46,21 @@ export interface OptionsScan<E, R> {
   readonly enrichir?: (element: E, budget: Budget) => Promise<E>;
   /** Projection optionnelle vers la forme de sortie ; identité si absente (`R` doit alors valoir `E`). */
   readonly projeter?: (element: E) => R;
+  /**
+   * Budget partagé explicite (D-T11-2, extension additive) : si fourni, remplace
+   * `creerBudget(contexte)`. Comportement inchangé si absent.
+   */
+  readonly budget?: Budget;
+  /**
+   * Aucun état de curseur n'est enregistré pour ce parcours (D-T11-3, extension additive) : la
+   * sortie porte toujours `curseur: null`, même si le parcours n'est pas terminé.
+   */
+  readonly sansCurseur?: boolean;
+  /**
+   * Filtre additionnel appliqué après enrichissement (D-T11-8, extension additive) : un élément
+   * rejeté est marqué vu, n'est jamais rendu et n'est pas compté dans `pagination.total`.
+   */
+  readonly filtreApresEnrichissement?: (element: E) => boolean;
 }
 
 /** Sortie du moteur (07 §5) : jamais l'`Enveloppe` finale, aucune politique PII (T12). */
@@ -61,29 +81,6 @@ export interface DepsScan {
   readonly curseurs: MagasinCurseurs;
   readonly cache: CacheSource;
   readonly clock: Clock;
-}
-
-function normaliserProfond(valeur: unknown): unknown {
-  if (typeof valeur === "string") {
-    return valeur.normalize("NFC");
-  }
-  if (Array.isArray(valeur)) {
-    return valeur.map((v) => normaliserProfond(v));
-  }
-  if (valeur !== null && typeof valeur === "object") {
-    const source = valeur as Record<string, unknown>;
-    const resultat: Record<string, unknown> = {};
-    for (const cle of Object.keys(source).sort()) {
-      resultat[cle] = normaliserProfond(source[cle]);
-    }
-    return resultat;
-  }
-  return valeur;
-}
-
-/** Sérialisation canonique et déterministe : ordre de clés stable, NFC (07 §5). */
-export function empreinteCanonique(valeur: unknown): string {
-  return JSON.stringify(normaliserProfond(valeur) ?? null);
 }
 
 /** Empreinte des seuls filtres/tri/projection, partagée entre le curseur et la clé de cache. */
@@ -107,34 +104,6 @@ export function empreinteIdentiteScan(identite: IdentiteScan): string {
     limite: identite.limite,
     empreinteFiltre: empreinteFiltreTriProjection(identite),
   });
-}
-
-function memeEnsembleIds(a: readonly string[], b: readonly string[]): boolean {
-  if (a.length === 0 || b.length === 0 || a.length !== b.length) {
-    return false;
-  }
-  const trieA = [...a].sort();
-  const trieB = [...b].sort();
-  return trieA.every((v, i) => v === trieB[i]);
-}
-
-/**
- * Lit la raison d'arrêt attendue (`budget`/`quota`/`deadline`) portée par une erreur du client
- * HTTP ou du quota (`code: RESOLUTION_INCOMPLETE`, `details.raison`). Toute autre erreur — y
- * compris `raison: "annule"` — n'est pas reconnue ici et doit être propagée telle quelle par
- * l'appelant (auth, droits, schéma invalide, panne durable, annulation).
- */
-function raisonArretDepuisErreur(erreur: unknown): "budget" | "quota" | "deadline" | null {
-  if (!(erreur instanceof Error)) {
-    return null;
-  }
-  const porteur = erreur as Error & { erreur?: ErreurMetier };
-  const corps = porteur.erreur;
-  if (corps === undefined || corps.code !== "RESOLUTION_INCOMPLETE") {
-    return null;
-  }
-  const raison = corps.details?.["raison"];
-  return raison === "budget" || raison === "quota" || raison === "deadline" ? raison : null;
 }
 
 interface EtatMutable<E> {
@@ -186,23 +155,13 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
     etat.sourceTerminee = repris.sourceTerminee;
   }
 
-  const budget = creerBudget(contexte);
+  const budget = options.budget ?? creerBudget(contexte);
   const resultats: R[] = [];
   const avertissements: string[] = [];
   let appelsSource = 0;
   let raisonArret: RaisonArret = null;
   let approximatif = false;
   let interrompu = false;
-
-  function budgetOuDeadlineEpuises(): "budget" | "deadline" | null {
-    if (deps.clock.now().getTime() >= budget.deadline.getTime()) {
-      return "deadline";
-    }
-    if (budget.restant < 1) {
-      return "budget";
-    }
-    return null;
-  }
 
   function marquerArretPartiel(raison: "budget" | "quota" | "deadline" | "source_incomplete", libelle: string): void {
     raisonArret = raison;
@@ -220,7 +179,7 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
       let enrichi: E;
       try {
         if (options.enrichir !== undefined) {
-          const epuise = budgetOuDeadlineEpuises();
+          const epuise = budgetOuDeadlineEpuises(deps.clock, budget);
           if (epuise !== null) {
             marquerArretPartiel(epuise, `Parcours interrompu avant enrichissement (${epuise}).`);
             break;
@@ -238,7 +197,14 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
         }
         throw erreur;
       }
+
       etat.elementsEnAttente.shift();
+      if (options.filtreApresEnrichissement !== undefined && !options.filtreApresEnrichissement(enrichi)) {
+        // D-T11-8 : rejeté après enrichissement — marqué vu, jamais rendu, jamais recompté.
+        etat.idsVus.add(source.idElement(element));
+        etat.totalFiltreAccumule -= 1;
+        continue;
+      }
       resultats.push(projeter(enrichi));
       etat.idsVus.add(source.idElement(element));
     }
@@ -248,59 +214,36 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
     await drainerBuffer();
 
     while (resultats.length < limite && !etat.sourceTerminee && !interrompu) {
-      const epuise = budgetOuDeadlineEpuises();
-      if (epuise !== null) {
-        marquerArretPartiel(epuise, `Parcours interrompu avant lecture de page (${epuise}).`);
+      const positionDemandee = etat.position;
+      const resultatPage = await lirePageGardee(
+        deps,
+        budget,
+        source,
+        {
+          profil: identite.profil,
+          identiteGeneration: identite.identiteGeneration,
+          environnement: identite.environnement,
+          famille: identite.famille,
+          dossier: identite.dossier,
+          empreinteFiltre,
+        },
+        positionDemandee,
+        etat.idsDernierePage,
+      );
+
+      if (resultatPage.raisonArret !== null) {
+        marquerArretPartiel(
+          resultatPage.raisonArret,
+          `Parcours interrompu pendant la lecture de page (${resultatPage.raisonArret}).`,
+        );
         break;
       }
-      if (budget.signal?.aborted === true) {
-        throw erreurScanAnnule();
-      }
-
-      const positionDemandee = etat.position;
-      const cle = {
-        profil: identite.profil,
-        identiteGeneration: identite.identiteGeneration,
-        environnement: identite.environnement,
-        famille: identite.famille,
-        dossier: identite.dossier,
-        sourceId: source.id,
-        empreinteFiltre,
-        position: positionDemandee,
-      };
-
-      let page: PageSource<E>;
-      let depuisCache = true;
-      const enCache = deps.cache.lire<E>(cle);
-      if (enCache !== null) {
-        page = enCache;
-      } else {
-        depuisCache = false;
-        try {
-          page = await source.lirePage(positionDemandee, budget);
-        } catch (erreur) {
-          const raison = raisonArretDepuisErreur(erreur);
-          if (raison !== null) {
-            marquerArretPartiel(raison, `Parcours interrompu pendant la lecture de page (${raison}).`);
-            break;
-          }
-          throw erreur;
-        }
-      }
-
-      const idsPage = page.elements.map((element) => source.idElement(element));
-      const positionInchangee = positionDemandee !== null && page.suivant !== null
-        && empreinteCanonique(page.suivant) === empreinteCanonique(positionDemandee);
-      const pageRepetee = memeEnsembleIds(idsPage, etat.idsDernierePage);
-      if (positionInchangee || pageRepetee) {
-        throw erreurPaginationUpstreamInvalide(source.id, positionInchangee ? "position_inchangee" : "page_repetee");
-      }
-
-      if (!depuisCache) {
-        deps.cache.ecrire(cle, page, source.nature);
+      const page = resultatPage.page as NonNullable<typeof resultatPage.page>;
+      if (!resultatPage.depuisCache) {
         appelsSource += 1;
       }
 
+      const idsPage = page.elements.map((element) => source.idElement(element));
       if (page.totalSource !== null) {
         etat.totalSourceConnu = page.totalSource;
       }
@@ -342,7 +285,7 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
     }
 
     let curseurFinal: string | null = null;
-    if (hasMore) {
+    if (hasMore && options.sansCurseur !== true) {
       const etatPersiste: EtatCurseur<E> = {
         position: etat.position,
         elementsEnAttente: etat.elementsEnAttente,

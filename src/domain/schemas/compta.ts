@@ -88,7 +88,13 @@ export const TransactionBancaireSchema = z.object({
   statut_source: z.string().nullable(),
 });
 
-/** Agrégat de balance par compte (07 §8) : `solde = debit − credit`. */
+/**
+ * Agrégat de balance par compte (07 §8) : `solde = debit − credit`. Extension additive D-T11-12 :
+ * `lignes` = nombre de lignes de mouvement parcourues pour ce compte (jamais une donnée EBP
+ * séparée, dérivée du parcours local) ; `incomplet: true` quand le parcours d'agrégat qui a
+ * produit cette ligne s'est arrêté avant la fin de la source (budget/quota/deadline/source
+ * incomplète) — le solde affiché n'est alors jamais déclaré exhaustif (07 §5).
+ */
 export const LigneBalanceSchema = z.object({
   compte: CompteSchema,
   debit: DecimalStringSchema,
@@ -97,6 +103,8 @@ export const LigneBalanceSchema = z.object({
   solde_debiteur: DecimalStringSchema,
   solde_crediteur: DecimalStringSchema,
   devise: z.string().nullable(),
+  lignes: z.number().int().nonnegative(),
+  incomplet: z.boolean(),
 });
 
 /** Ligne de grand livre d'un compte (07 §6 `grand_livre`). Pas de `devise` : même motif que `LigneEcritureSchema`. */
