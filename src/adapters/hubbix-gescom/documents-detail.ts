@@ -48,6 +48,8 @@ export interface DetailDocumentVente {
 export interface FicheDocumentVente {
   readonly resultat: DetailDocumentVente;
   readonly avertissements: string[];
+  /** Élément source validé (D-T11-14, extension additive), pour `inclure_brut` uniquement. */
+  readonly sourceEbp: unknown;
 }
 
 function idOpaque(valeur: unknown): string | null {
@@ -131,7 +133,11 @@ async function lireDetailDocument(
   }
   const avertissements: string[] = [];
   const commun = mapperDetailCommun(resultat.data, avertissements);
-  return { resultat: { ...commun, date_validite: null, montant_en_retard: null }, avertissements };
+  return {
+    resultat: { ...commun, date_validite: null, montant_en_retard: null },
+    avertissements,
+    sourceEbp: resultat.data,
+  };
 }
 
 async function lireDetailDevis(
@@ -149,7 +155,11 @@ async function lireDetailDevis(
   }
   const avertissements: string[] = [];
   const commun = mapperDetailCommun(resultat.data, avertissements);
-  return { resultat: { ...commun, date_validite: resultat.data.validUntil, montant_en_retard: null }, avertissements };
+  return {
+    resultat: { ...commun, date_validite: resultat.data.validUntil, montant_en_retard: null },
+    avertissements,
+    sourceEbp: resultat.data,
+  };
 }
 
 /**
@@ -203,6 +213,7 @@ async function lireDetailAcompte(
       montant_en_retard: decimalDepuisLexeme(source.lateAmount),
     },
     avertissements,
+    sourceEbp: source,
   };
 }
 
