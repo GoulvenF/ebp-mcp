@@ -7,6 +7,8 @@ import { creerRepertoireTemporaire, nettoyerRepertoire } from "./fixtures.js";
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 const SCRIPT_ENFANT = join(ICI, "enfant-depart.mjs");
+const MIN_INTERVAL_MS = 1000;
+const NOMBRE_DEPARTS = 3;
 
 function lancerScript(args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -43,11 +45,10 @@ describe("quota multi-processus (critère 1, 07 §4)", () => {
       const groupe = "partage";
       const sortieA = join(dir, "instants-a.txt");
       const sortieB = join(dir, "instants-b.txt");
-      const nombreDeparts = 3;
 
       await Promise.all([
-        lancerScript([dir, groupe, "10000", "500", "1000", String(nombreDeparts), sortieA]),
-        lancerScript([dir, groupe, "10000", "500", "1000", String(nombreDeparts), sortieB]),
+        lancerScript([dir, groupe, "10000", "500", String(MIN_INTERVAL_MS), String(NOMBRE_DEPARTS), sortieA]),
+        lancerScript([dir, groupe, "10000", "500", String(MIN_INTERVAL_MS), String(NOMBRE_DEPARTS), sortieB]),
       ]);
 
       const instants = [
@@ -55,15 +56,17 @@ describe("quota multi-processus (critère 1, 07 §4)", () => {
         ...(await readFile(sortieB, "utf8")).trim().split("\n").map(Number),
       ].sort((a, b) => a - b);
 
-      expect(instants).toHaveLength(nombreDeparts * 2);
+      expect(instants).toHaveLength(NOMBRE_DEPARTS * 2);
       for (let i = 1; i < instants.length; i += 1) {
         const ecart = (instants[i] as number) - (instants[i - 1] as number);
-        // Tolérance de 5 % : horloge réelle inter-processus sous une CI chargée (plusieurs
-        // fichiers de test tournent en parallèle) ; la garantie testée ici est l'absence de
-        // rafale (un écart proche de 0 trahirait un vrai bug), pas la précision du minuteur OS.
-        expect(ecart).toBeGreaterThanOrEqual(950);
+        // Instants journalisés par le processus enfant à l'écriture de `dernierDepart`, sous
+        // verrou (décider, src/quota/quota-store-fichier.ts), avant fsync + release() : c'est
+        // l'espacement que l'implémentation garantit réellement, pas le wall-clock post-retour
+        // (qui inclut un coût variable d'E/S et rendait l'assertion bruitée). Exacte, sans
+        // tolérance.
+        expect(ecart).toBeGreaterThanOrEqual(MIN_INTERVAL_MS);
       }
     },
-    30000,
+    MIN_INTERVAL_MS * (NOMBRE_DEPARTS * 2 + 5) * 2,
   );
 });
