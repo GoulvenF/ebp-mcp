@@ -102,8 +102,28 @@ export const ManifesteFixtureSchema = z
 export type ManifesteFixture = z.infer<typeof ManifesteFixtureSchema>;
 
 /**
+ * Clés dont la présence signe une fiche (objet nu sans enveloppe de liste) : `id`/`code` pour les
+ * fiches client et article, `documentType` pour l'en-tête d'un document de vente détaillé (T10b) ;
+ * `uuid` pour les fiches CPT (`/general-account/{numero}`, `/auxiliary-accounts/{number}`,
+ * `/entries/{uuid}`), `domainName` pour `/domain-information`, `exercices` pour
+ * `/folder-settings` (T09 D-T09-9, 02 §2). Sert de garde-fou à `determinerFormeEnveloppeReelle` —
+ * sans ça, tout objet non reconnu (y compris un corps mal formé) retomberait silencieusement sur
+ * `fiche`.
+ */
+const CLES_DISCRIMINANTES_FICHE = [
+  "id",
+  "code",
+  "documentType",
+  "uuid",
+  "domainName",
+  "exercices",
+] as const;
+
+/**
  * Détermine la forme réelle de `reponse_ebp.corps` par inspection structurelle (02 §1 : trois
- * wrappers + tableau nu). Ne fait jamais confiance à `forme_enveloppe` déclaré.
+ * wrappers + tableau nu + fiche). Ne fait jamais confiance à `forme_enveloppe` déclaré. `fiche`
+ * exige une signature positive (`CLES_DISCRIMINANTES_FICHE`) ; sans elle, forme non reconnue ⇒
+ * `null`, jamais un repli silencieux.
  */
 export function determinerFormeEnveloppeReelle(corps: unknown): FormeEnveloppe | null {
   if (Array.isArray(corps)) {
@@ -132,5 +152,8 @@ export function determinerFormeEnveloppeReelle(corps: unknown): FormeEnveloppe |
   if (typeof objet.title === "string" && Array.isArray(objet.errors)) {
     return "erreur";
   }
-  return "fiche";
+  if (CLES_DISCRIMINANTES_FICHE.some((cle) => cle in objet)) {
+    return "fiche";
+  }
+  return null;
 }

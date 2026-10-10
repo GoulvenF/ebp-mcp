@@ -1,0 +1,70 @@
+{
+  "id": "gescom-sale-deposit-credit-detail",
+  "famille": "hubbix-gescom",
+  "route": "/sale-deposit-credits/{id}",
+  "forme_enveloppe": "fiche",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /sale-deposit-credits/{id}",
+    "consulte_le": "2026-10-09"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": ["E10"],
+  "couverture": ["avoir-negatif"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/sale-deposit-credits/doc-207",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "id": "doc-207",
+      "documentType": "SaleDepositCredit",
+      "documentStatus": 0,
+      "name": "Client Theta",
+      "date": "2026-02-15",
+      "number": "ACAV2026-207",
+      "accountingTransferStatus": 1,
+      "customerId": "cli-207",
+      "commitments": [],
+      "lines": [],
+      "footer": {},
+      "vatSummaryLines": [],
+      "amountVatIncluded": "-80.00",
+      "remainingAmount": "-80.00",
+      "lateAmount": "0.00"
+    }
+  },
+  "attentes": {
+    "description": "Avoir d'acompte (routé sur `/sale-deposit-credits/{id}`, route distincte de celle des factures d'acompte, A13) : montants déjà négatifs conservés tels quels, aucune inversion de signe.",
+    "resultats": [
+      {
+        "id": "doc-207",
+        "type": "SaleDepositCredit",
+        "statut": "provisoire",
+        "tiers_id": "cli-207",
+        "tiers_nom": "Client Theta",
+        "date": "2026-02-15",
+        "numero": "ACAV2026-207",
+        "montant_ht": null,
+        "montant_ttc": "-80",
+        "montant_net_ttc": "-80",
+        "devise": null,
+        "reste_du": "-80",
+        "statut_comptable": "accounted",
+        "lignes": [],
+        "pied": {},
+        "recapitulatif_tva": [],
+        "echeances": [],
+        "date_validite": null,
+        "montant_en_retard": "0"
+      }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "`SaleDepositCredit` et `SaleDepositInvoice` ont chacun leur propre route de détail : jamais de confusion de route entre les deux (A13)."
+}

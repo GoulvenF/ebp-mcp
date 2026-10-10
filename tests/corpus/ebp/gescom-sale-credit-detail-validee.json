@@ -1,0 +1,71 @@
+{
+  "id": "gescom-sale-credit-detail-validee",
+  "famille": "hubbix-gescom",
+  "route": "/sale-credits/validated/{id}",
+  "forme_enveloppe": "fiche",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /sale-credits/validated/{id}",
+    "consulte_le": "2026-10-09"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": ["E10"],
+  "couverture": ["avoir-negatif"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/sale-credits/validated/doc-203",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "id": "doc-203",
+      "documentType": "SaleCredit",
+      "documentStatus": 1,
+      "name": "Client Delta",
+      "date": "2026-02-11",
+      "number": "AV2026-203",
+      "totalAmountVatExcluded": "-120.50",
+      "totalAmountVatIncluded": "-144.60",
+      "netAmountVatIncluded": "-144.60",
+      "dueAmount": "0.00",
+      "accountingTransferStatus": 2,
+      "customerId": "cli-203",
+      "commitments": null,
+      "lines": null,
+      "footer": null,
+      "vatSummaryLines": null
+    }
+  },
+  "attentes": {
+    "description": "Avoir validé (routé sur `/sale-credits/validated/{id}`, distinct de la route provisoire) : montants négatifs conservés, `accountingTransferStatus=2` (`EntryGenerationFailure`) mappé sans avertissement — valeur connue, pas une absence.",
+    "resultats": [
+      {
+        "id": "doc-203",
+        "type": "SaleCredit",
+        "statut": "valide",
+        "tiers_id": "cli-203",
+        "tiers_nom": "Client Delta",
+        "date": "2026-02-11",
+        "numero": "AV2026-203",
+        "montant_ht": "-120.5",
+        "montant_ttc": "-144.6",
+        "montant_net_ttc": "-144.6",
+        "devise": null,
+        "reste_du": "0",
+        "statut_comptable": "entry_generation_failure",
+        "lignes": null,
+        "pied": null,
+        "recapitulatif_tva": null,
+        "echeances": null,
+        "date_validite": null,
+        "montant_en_retard": null
+      }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "`AccountingTransferStatus` : `SentForAccounting=0`, `Accounted=1`, `EntryGenerationFailure=2` (02 §3)."
+}

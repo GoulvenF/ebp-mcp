@@ -10,12 +10,19 @@
   },
   "statut": "synthetique",
   "observe_le": null,
-  "preuves_liees": ["E10"],
-  "couverture": ["fenetre-un-jour"],
+  "preuves_liees": [
+    "E10"
+  ],
+  "couverture": [
+    "fenetre-un-jour"
+  ],
   "requete_attendue": {
     "methode": "GET",
     "chemin": "/sale-commitments",
-    "parametres": { "skip": 0, "take": 50 }
+    "parametres": {
+      "skip": 0,
+      "take": 50
+    }
   },
   "reponse_ebp": {
     "statut_http": 200,
@@ -24,8 +31,17 @@
         {
           "id": "ech-1",
           "date": "2026-03-10",
-          "customer": { "id": "cli-1", "name": "Client Démo", "code": "CLI001" },
-          "document": { "id": "doc-1", "number": "F2026-010", "documentType": "SaleInvoice", "documentStatus": 1 },
+          "customer": {
+            "id": "cli-1",
+            "name": "Client Démo",
+            "code": "CLI001"
+          },
+          "document": {
+            "id": "doc-1",
+            "number": "F2026-010",
+            "documentType": "SaleInvoice",
+            "documentStatus": 1
+          },
           "paymentMode": "Chèque",
           "amount": "100.00",
           "remainingAmount": "100.00"
@@ -50,14 +66,20 @@
         "document_type": "SaleInvoice",
         "document_statut": "1",
         "mode_paiement": "Chèque",
-        "montant": "100.00",
+        "montant": "100",
         "devise": null,
-        "reste_du": "100.00"
+        "reste_du": "100"
       }
     ],
-    "pagination": { "renvoyes": 1, "total": null, "total_source": 1, "hasMore": false, "curseur": null },
+    "pagination": {
+      "renvoyes": 1,
+      "total": null,
+      "total_source": 1,
+      "hasMore": false,
+      "curseur": null
+    },
     "avertissements": [],
     "erreur": null
   },
-  "notes": "`dureeInclusiveJours(\"2026-03-10\",\"2026-03-10\")` = 1 (A10, lot 1) : l'échéance du jour même n'est pas exclue de la fenêtre."
+  "notes": "`dureeInclusiveJours(\"2026-03-10\",\"2026-03-10\")` = 1 (A10, lot 1) : l'échéance du jour même n'est pas exclue de la fenêtre. Attentes corrigées en forme décimale canonique (07 §5) : 100.00→100."
 }

@@ -4,7 +4,7 @@ import { z } from "zod";
  * Schémas EBP bruts (02 §2), distincts des schémas de domaine (`src/domain/schemas/compta.ts`).
  * Champs exactement ceux documentés ; aucun champ conjectural. Un montant peut être une chaîne
  * (lexème décimal) ou un nombre JSON (D-T09-3) : `z.union` plutôt qu'un seul type, la décision du
- * mapping se fait dans `montants.ts`, jamais ici. Validés avant tout mapping : un champ documenté
+ * mapping se fait dans `lignes.ts`, jamais ici. Validés avant tout mapping : un champ documenté
  * manquant ou de type différent fait échouer le `safeParse`, déclenchant `UPSTREAM_SCHEMA_CHANGED`
  * côté appelant plutôt qu'une valeur inventée.
  */

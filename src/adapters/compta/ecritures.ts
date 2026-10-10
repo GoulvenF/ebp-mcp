@@ -167,6 +167,7 @@ export async function lireEcriture(
   const avertissements: string[] = [];
   const { mode, avertissement } = mapperMode(source.entryMode);
   if (avertissement !== null) avertissements.push(avertissement);
+  if (mode === null) avertissements.push("Champ absent reçu de la source : entryMode");
   const rangDe = creerCompteurOccurrences();
   const lignes = source.lines.map((ligneBrute): LigneEcriture => {
     const debit = montantDepuisSource(ligneBrute.debit, "entries.lines.debit", avertissements);

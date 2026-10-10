@@ -1,0 +1,72 @@
+{
+  "id": "gescom-sale-quote-detail-facturee",
+  "famille": "hubbix-gescom",
+  "route": "/sale-quotes/invoiced/{id}",
+  "forme_enveloppe": "fiche",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /sale-quotes/invoiced/{id}",
+    "consulte_le": "2026-10-09"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": [],
+  "couverture": ["champs-null"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/sale-quotes/invoiced/doc-205",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "id": "doc-205",
+      "documentType": "SaleQuote",
+      "documentStatus": 1,
+      "name": "Client Zeta",
+      "date": "2026-02-13",
+      "number": "DEV2026-205",
+      "totalAmountVatExcluded": "300.00",
+      "totalAmountVatIncluded": "360.00",
+      "netAmountVatIncluded": "360.00",
+      "dueAmount": "360.00",
+      "accountingTransferStatus": 1,
+      "customerId": "cli-205",
+      "commitments": [{ "date": "2026-03-01", "amount": "360.00", "remainingAmount": "360.00", "paymentModeId": "CB" }],
+      "lines": [{ "designation": "Ligne devis" }],
+      "footer": {},
+      "vatSummaryLines": [],
+      "validUntil": "2026-04-01"
+    }
+  },
+  "attentes": {
+    "description": "Devis « facturé » (`documentStatus=1` = `Validated`, A26) : routé sur `/sale-quotes/invoiced/{id}`, jamais `/sale-quotes/validated/{id}` qui n'existe pas (plan GOU-272). `paymentModeId` déjà en chaîne conservé tel quel, sans conversion.",
+    "resultats": [
+      {
+        "id": "doc-205",
+        "type": "SaleQuote",
+        "statut": "valide",
+        "tiers_id": "cli-205",
+        "tiers_nom": "Client Zeta",
+        "date": "2026-02-13",
+        "numero": "DEV2026-205",
+        "montant_ht": "300",
+        "montant_ttc": "360",
+        "montant_net_ttc": "360",
+        "devise": null,
+        "reste_du": "360",
+        "statut_comptable": "accounted",
+        "lignes": [{ "designation": "Ligne devis" }],
+        "pied": {},
+        "recapitulatif_tva": [],
+        "echeances": [{ "date": "2026-03-01", "montant": "360", "reste_du": "360", "mode_paiement_id": "CB" }],
+        "date_validite": "2026-04-01",
+        "montant_en_retard": null
+      }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "Statut « facturé » = `SaleDocumentStatus.Validated` (02 §3) : aucune date de transformation n'en est déduite (07 §8, hors périmètre T10b)."
+}

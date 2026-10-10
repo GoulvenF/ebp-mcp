@@ -17,7 +17,13 @@ export type TypeCompteAuxiliaire = z.infer<typeof TypeCompteAuxiliaireSchema>;
 
 const CODES_TYPE_CONNUS = ["C", "F", "S", "O", "A"] as const;
 
-function mapperTiersListe(source: z.infer<typeof AuxiliaryAccountEbpSchema>): Omit<Tiers, "email" | "telephone"> {
+function mapperTiersListe(
+  source: z.infer<typeof AuxiliaryAccountEbpSchema>,
+  avertissements: string[],
+): Omit<Tiers, "email" | "telephone"> {
+  if (source.name === null || source.name === undefined) {
+    avertissements.push("Champ absent reçu de la source : name");
+  }
   return {
     id: source.uuid,
     compte: source.number,
@@ -80,7 +86,7 @@ export async function listerTiers(
     if (!resultat.success) {
       throw erreurEnveloppeInattendueCompta("cpt-auxiliary-accounts");
     }
-    return { ...mapperTiersListe(resultat.data), email: null, telephone: null };
+    return { ...mapperTiersListe(resultat.data, avertissements), email: null, telephone: null };
   });
   return { resultats, total_source: enveloppe.totalSource, renvoyes: resultats.length, avertissements };
 }
@@ -106,13 +112,14 @@ export async function lireTiers(
     throw erreurEnveloppeInattendueCompta("cpt-auxiliary-account-detail");
   }
   const source = resultat.data;
+  const avertissements: string[] = [];
   return {
     resultat: {
-      ...mapperTiersListe(source),
+      ...mapperTiersListe(source, avertissements),
       email: source.contact?.email ?? null,
       telephone: null,
     },
-    avertissements: [],
+    avertissements,
   };
 }
 

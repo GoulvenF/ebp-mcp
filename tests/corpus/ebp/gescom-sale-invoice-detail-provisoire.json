@@ -1,0 +1,77 @@
+{
+  "id": "gescom-sale-invoice-detail-provisoire",
+  "famille": "hubbix-gescom",
+  "route": "/sale-invoices/{id}",
+  "forme_enveloppe": "fiche",
+  "source": {
+    "url": "https://developpeurs-storage.ebp.com",
+    "section": "02 §3 Hubbix Gestion Commerciale TPE — /sale-invoices/{id}",
+    "consulte_le": "2026-10-09"
+  },
+  "statut": "documente",
+  "observe_le": null,
+  "preuves_liees": [],
+  "couverture": ["champs-null"],
+  "requete_attendue": {
+    "methode": "GET",
+    "chemin": "/sale-invoices/doc-200",
+    "parametres": {}
+  },
+  "reponse_ebp": {
+    "statut_http": 200,
+    "corps": {
+      "id": "doc-200",
+      "documentType": "SaleInvoice",
+      "documentStatus": 0,
+      "name": "Client Alpha",
+      "date": "2026-02-01",
+      "number": "F2026-200",
+      "totalAmountVatExcluded": "1000.00",
+      "totalAmountVatIncluded": "1200.00",
+      "netAmountVatIncluded": "1200.00",
+      "dueAmount": "700.00",
+      "accountingTransferStatus": 0,
+      "customerId": "cli-200",
+      "commitments": [
+        { "date": "2026-03-01", "amount": "600.00", "remainingAmount": "600.00", "paymentModeId": 4 },
+        { "date": "2026-04-01", "amount": "600.00", "remainingAmount": "100.00", "paymentModeId": null }
+      ],
+      "lines": [{ "designation": "Prestation A", "quantity": 1 }],
+      "footer": { "totalDiscount": "0.00" },
+      "vatSummaryLines": [{ "vatRate": "20", "vatAmount": "200.00" }]
+    }
+  },
+  "attentes": {
+    "description": "Facture provisoire (A13) : routée sur `/sale-invoices/{id}`. Deuxième échéance avec `remainingAmount` (100) distinct du `amount` (600) d'origine — règlement partiel — et `paymentModeId` absent (`null`, `champs-null`) pour la première.",
+    "resultats": [
+      {
+        "id": "doc-200",
+        "type": "SaleInvoice",
+        "statut": "provisoire",
+        "tiers_id": "cli-200",
+        "tiers_nom": "Client Alpha",
+        "date": "2026-02-01",
+        "numero": "F2026-200",
+        "montant_ht": "1000",
+        "montant_ttc": "1200",
+        "montant_net_ttc": "1200",
+        "devise": null,
+        "reste_du": "700",
+        "statut_comptable": "sent_for_accounting",
+        "lignes": [{ "designation": "Prestation A", "quantity": 1 }],
+        "pied": { "totalDiscount": "0.00" },
+        "recapitulatif_tva": [{ "vatRate": "20", "vatAmount": "200.00" }],
+        "echeances": [
+          { "date": "2026-03-01", "montant": "600", "reste_du": "600", "mode_paiement_id": "4" },
+          { "date": "2026-04-01", "montant": "600", "reste_du": "100", "mode_paiement_id": null }
+        ],
+        "date_validite": null,
+        "montant_en_retard": null
+      }
+    ],
+    "pagination": null,
+    "avertissements": [],
+    "erreur": null
+  },
+  "notes": "`paymentModeId` numérique conservé en chaîne opaque (`\"4\"`), jamais résolu en libellé (hors périmètre T10b)."
+}
