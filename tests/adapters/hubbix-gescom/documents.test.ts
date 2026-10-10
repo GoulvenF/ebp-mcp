@@ -90,4 +90,69 @@ describe("hubbix-gescom/documents.ts — critère #5 : /sale-documents, A14, res
     expect(page.resultats[0]!.statut).toBe("inconnu");
     expect(page.avertissements).toEqual(["Valeur enum inconnue reçue de la source pour documentStatus : 9"]);
   });
+
+  it("`documentType` absent ⇒ `inconnu` + avertissement distinct d'une valeur hors énumération", async () => {
+    const d = deps([
+      {
+        status: 200,
+        corps: {
+          elements: [
+            {
+              id: "doc-902",
+              documentStatus: 0,
+              name: "Client Sans Type",
+              date: "2026-03-03",
+              number: "F2026-902",
+              totalAmountVatExcluded: "10.00",
+              totalAmountVatIncluded: "12.00",
+              netAmountVatIncluded: "12.00",
+              dueAmount: "12.00",
+              accountingTransferStatus: 0,
+            },
+          ],
+          take: 50,
+          skip: 0,
+          total: 1,
+        },
+      },
+    ]);
+
+    const page = await listerDocumentsVente(d, budgetDe(), contexteGescom(), { skip: 0, take: 50 });
+
+    expect(page.resultats[0]!.type).toBe("inconnu");
+    expect(page.avertissements).toEqual(["Champ documentType absent de la source."]);
+  });
+
+  it("`documentType` présent mais non-chaîne : avertissement cite la valeur source sans la requalifier en `null`", async () => {
+    const d = deps([
+      {
+        status: 200,
+        corps: {
+          elements: [
+            {
+              id: "doc-903",
+              documentType: 42,
+              documentStatus: 0,
+              name: "Client Type Non-Chaîne",
+              date: "2026-03-04",
+              number: "F2026-903",
+              totalAmountVatExcluded: "10.00",
+              totalAmountVatIncluded: "12.00",
+              netAmountVatIncluded: "12.00",
+              dueAmount: "12.00",
+              accountingTransferStatus: 0,
+            },
+          ],
+          take: 50,
+          skip: 0,
+          total: 1,
+        },
+      },
+    ]);
+
+    const page = await listerDocumentsVente(d, budgetDe(), contexteGescom(), { skip: 0, take: 50 });
+
+    expect(page.resultats[0]!.type).toBe("inconnu");
+    expect(page.avertissements).toEqual(["Valeur enum inconnue reçue de la source pour documentType : 42"]);
+  });
 });

@@ -1,5 +1,8 @@
-/** Résultat d'interprétation d'une valeur enum numérique source (voir {@link interpreterEnumNumerique}). */
-export interface ResultatEnumNumerique<T extends string> {
+/**
+ * Résultat d'interprétation d'une valeur enum source (voir {@link interpreterEnumNumerique} et
+ * {@link interpreterEnumChaine}).
+ */
+export interface ResultatEnumSource<T extends string> {
   readonly valeur: T | "inconnu";
   readonly avertissement: string | null;
 }
@@ -19,12 +22,37 @@ export function interpreterEnumNumerique<T extends string>(
   valeurSource: unknown,
   table: ReadonlyMap<number, T>,
   nomChamp: string,
-): ResultatEnumNumerique<T> {
+): ResultatEnumSource<T> {
   if (valeurSource === undefined || valeurSource === null) {
     return { valeur: "inconnu", avertissement: `Champ ${nomChamp} absent de la source.` };
   }
   if (typeof valeurSource === "number" && table.has(valeurSource)) {
     return { valeur: table.get(valeurSource) as T, avertissement: null };
+  }
+  return {
+    valeur: "inconnu",
+    avertissement: `Valeur enum inconnue reçue de la source pour ${nomChamp} : ${JSON.stringify(valeurSource)}`,
+  };
+}
+
+/**
+ * Interprétation d'une énumération source codée en chaîne (`documentType`, 02 §3) : même
+ * distinction absent/inconnu que {@link interpreterEnumNumerique}, pour les champs nécessaires au
+ * routage (A13) qui arrivent en chaîne plutôt qu'en nombre. Contrairement à `interpreterEnum`
+ * (`src/domain/enum.ts`), qui requalifie toute valeur non-string en `null` avant de la citer,
+ * cette fonction cite la valeur source telle quelle, quel que soit son type, et nomme le champ
+ * dans l'avertissement.
+ */
+export function interpreterEnumChaine<T extends string>(
+  valeurSource: unknown,
+  valeursConnues: readonly T[],
+  nomChamp: string,
+): ResultatEnumSource<T> {
+  if (valeurSource === undefined || valeurSource === null) {
+    return { valeur: "inconnu", avertissement: `Champ ${nomChamp} absent de la source.` };
+  }
+  if (typeof valeurSource === "string" && (valeursConnues as readonly string[]).includes(valeurSource)) {
+    return { valeur: valeurSource as T, avertissement: null };
   }
   return {
     valeur: "inconnu",

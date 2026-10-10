@@ -73,7 +73,7 @@
       "curseur": null
     },
     "avertissements": [
-      "Valeur enum inconnue reçue de la source : \"SaleProforma\""
+      "Valeur enum inconnue reçue de la source pour documentType : \"SaleProforma\""
     ],
     "erreur": null
   },

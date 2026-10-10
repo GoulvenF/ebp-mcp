@@ -70,12 +70,18 @@ export function erreurSkipInvalide(valeur: number): ErreurAdapterGescom {
   );
 }
 
-/** Capacité non supportée en v0.1 côté GC (07 §6), p. ex. résolution client par code : refus avant réseau. */
-export function erreurCapaciteNonSupportee(capacite: string): ErreurAdapterGescom {
-  return creer(
-    "UNSUPPORTED_CAPABILITY",
-    "Capacité non supportée en v0.1 pour Gestion Commerciale.",
-    "Utiliser l'identifiant direct du client ; la résolution par code n'est pas supportée pour ce dossier.",
-    { capacite },
-  );
+/**
+ * Capacité non supportée en v0.1 côté GC (07 §6) : refus avant réseau. `capacite` reste un slug
+ * stable (identifiant interne, jamais une phrase embarquant une valeur source — contrat de
+ * `details` dans ce fichier) ; `message`/`action` sont par défaut ceux de la résolution client par
+ * code, à surcharger pour toute autre capacité afin de ne pas renvoyer une remédiation sans
+ * rapport avec l'erreur réelle de l'appelant (revue T10b).
+ */
+export function erreurCapaciteNonSupportee(
+  capacite: string,
+  message = "Capacité non supportée en v0.1 pour Gestion Commerciale.",
+  action = "Utiliser l'identifiant direct du client ; la résolution par code n'est pas supportée pour ce dossier.",
+  details?: Record<string, unknown>,
+): ErreurAdapterGescom {
+  return creer("UNSUPPORTED_CAPABILITY", message, action, { capacite, ...details });
 }

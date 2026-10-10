@@ -15,11 +15,17 @@ describe("hubbix-gescom/reglements.ts — critère #8 : /settlements, A14, settl
     expect(page.resultats.every((r) => r.tiers_id === null)).toBe(true);
   });
 
-  it("filtre par ID tiers refusé avant tout réseau (A14, la source ne fournit pas d'ID client)", async () => {
+  it("filtre par ID tiers refusé avant tout réseau (A14, la source ne fournit pas d'ID client), action pertinente (pas celle de la résolution client par code)", async () => {
     const d = deps([]);
     await expect(
       listerReglements(d, budgetDe(), contexteGescom(), { skip: 0, take: 50, tiers: "cli-1" }),
-    ).rejects.toMatchObject({ erreur: { code: "UNSUPPORTED_CAPABILITY" } });
+    ).rejects.toMatchObject({
+      erreur: {
+        code: "UNSUPPORTED_CAPABILITY",
+        action: expect.stringContaining("filtre tiers"),
+        details: { capacite: "lister_reglements_filtre_tiers" },
+      },
+    });
     expect(d.transport.appels).toHaveLength(0);
   });
 });

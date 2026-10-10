@@ -1,6 +1,5 @@
-import { interpreterEnum } from "../../domain/enum.js";
 import type { DocumentVenteSchema } from "../../domain/schemas/gescom.js";
-import { interpreterEnumNumerique } from "./enum-source.js";
+import { interpreterEnumChaine, interpreterEnumNumerique } from "./enum-source.js";
 import { TYPES_DOCUMENT_CONNUS, type TypeDocumentSource } from "./routage.js";
 import type { z } from "zod";
 
@@ -20,15 +19,14 @@ const STATUTS_COMPTABLES: ReadonlyMap<number, NonNullable<DocumentVente["statut_
   [2, "entry_generation_failure"],
 ]);
 
+/**
+ * `documentType` (02 §3, chaîne) ⇒ `type` du domaine. Via `interpreterEnumChaine` : distingue un
+ * champ absent d'une valeur hors énumération et cite la valeur source sans la requalifier (même
+ * traitement que `mapperStatut`, remarque de revue T10b).
+ */
 export function mapperType(documentType: unknown): { type: DocumentVente["type"]; avertissement: string | null } {
-  const resultat = interpreterEnum(
-    typeof documentType === "string" ? documentType : null,
-    TYPES_DOCUMENT_CONNUS as readonly TypeDocumentSource[],
-  );
-  if (resultat.valeur === "inconnu") {
-    return { type: "inconnu", avertissement: resultat.avertissement };
-  }
-  return { type: resultat.valeur, avertissement: null };
+  const resultat = interpreterEnumChaine(documentType, TYPES_DOCUMENT_CONNUS as readonly TypeDocumentSource[], "documentType");
+  return { type: resultat.valeur, avertissement: resultat.avertissement };
 }
 
 /**

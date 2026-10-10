@@ -60,10 +60,20 @@ function estStatutDocumentConnu(valeur: unknown): valeur is StatutDocumentSource
  */
 export function resoudreRouteDetail(documentType: unknown, documentStatus: unknown): RouteDetailDocument {
   if (!estTypeDocumentConnu(documentType)) {
-    throw erreurCapaciteNonSupportee(`documentType ${citerValeur(documentType)} non pris en charge pour le routage`);
+    throw erreurCapaciteNonSupportee(
+      "resoudre_route_detail_document_type",
+      "documentType absent ou hors énumération connue : route de détail indéterminable en v0.1.",
+      "Fournir un documentType parmi les valeurs connues (SaleInvoice, SaleCredit, SaleQuote, SaleDepositInvoice, SaleDepositCredit) ; aucune requête n'a été émise.",
+      { documentType: citerValeur(documentType) },
+    );
   }
   if (!estStatutDocumentConnu(documentStatus)) {
-    throw erreurCapaciteNonSupportee(`documentStatus ${citerValeur(documentStatus)} non pris en charge pour le routage`);
+    throw erreurCapaciteNonSupportee(
+      "resoudre_route_detail_document_status",
+      "documentStatus absent ou hors énumération connue : route de détail indéterminable en v0.1.",
+      "Fournir un documentStatus parmi les valeurs connues (0 = Provisional, 1 = Validated) ; aucune requête n'a été émise.",
+      { documentStatus: citerValeur(documentStatus) },
+    );
   }
   return TABLE_ROUTAGE[documentType][documentStatus];
 }

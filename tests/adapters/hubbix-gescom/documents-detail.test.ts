@@ -84,11 +84,17 @@ describe("hubbix-gescom/routage.ts — critère #2 : table exhaustive (5 types �
 });
 
 describe("hubbix-gescom/routage.ts — critère #3 : type/statut inconnu, zéro appel réseau", () => {
-  it("documentType inconnu ⇒ UNSUPPORTED_CAPABILITY, aucune requête émise", async () => {
+  it("documentType inconnu ⇒ UNSUPPORTED_CAPABILITY, aucune requête émise, action pertinente (pas celle de la résolution client par code)", async () => {
     const d = deps([]);
     await expect(
       lireDetailDocumentVente(d, budgetDe(), contexteGescom(), "SaleProforma", 0, "doc-1"),
-    ).rejects.toMatchObject({ erreur: { code: "UNSUPPORTED_CAPABILITY" } });
+    ).rejects.toMatchObject({
+      erreur: {
+        code: "UNSUPPORTED_CAPABILITY",
+        action: expect.stringContaining("documentType"),
+        details: { capacite: "resoudre_route_detail_document_type" },
+      },
+    });
     expect(d.transport.appels).toHaveLength(0);
   });
 

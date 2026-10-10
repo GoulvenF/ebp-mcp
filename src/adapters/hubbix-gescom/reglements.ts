@@ -92,7 +92,11 @@ export async function listerReglements(
   requete: RequeteListeReglements,
 ): Promise<PageReglements> {
   if (requete.tiers !== undefined) {
-    throw erreurCapaciteNonSupportee("lister_reglements_filtre_tiers");
+    throw erreurCapaciteNonSupportee(
+      "lister_reglements_filtre_tiers",
+      "Filtre par identifiant tiers non supporté en v0.1 sur /settlements.",
+      "Retirer le filtre tiers ; la source ne fournit pas d'ID client sur cette route (A14), aucun filtrage local n'est tenté à sa place.",
+    );
   }
   validerSkipTake(requete.skip, requete.take);
   const corps = await executerRequetePourRoute(deps, budget, contexte, "gc-settlements", {
