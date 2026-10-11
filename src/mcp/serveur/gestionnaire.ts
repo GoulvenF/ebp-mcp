@@ -56,7 +56,7 @@ async function executerOutilContexte(
     } else {
       validerEntree(EntreeVideSchema, argsBrut, nom);
       resultat = await statutContexte(
-        { tokenStore: deps.tokenStore, quotaStore: deps.http.quota },
+        { tokenStore: deps.tokenStore, quotaStore: deps.http.quota, claims: deps.claims ?? null },
         deps.config,
         options.mode,
         sessionCtx.session.alias(),

@@ -1,3 +1,4 @@
+import type { ClaimsIdToken } from "../../auth/client-token.js";
 import type { ConfigResolue } from "../../config/resolution.js";
 import type { Session } from "../../config/session.js";
 import type { Mode } from "../../domain/envelope.js";
@@ -27,6 +28,8 @@ export interface DepsProcessus {
   readonly clock: Clock;
   readonly tokenStore: TokenStore;
   readonly journal: JournalMcp;
+  /** Claims décodés de l'`id_token` le plus récent (07 §3, affichage local non vérifié), pour `ebp_statut` ; absent ⇒ `null`. */
+  readonly claims?: ClaimsIdToken | null;
 }
 
 /**

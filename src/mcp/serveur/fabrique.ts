@@ -44,6 +44,7 @@ function construireServeur(depsPartage: DepsProcessusPartage, options: OptionsSe
     clock: depsPartage.clock,
     tokenStore: depsPartage.tokenStore,
     journal: depsPartage.journal,
+    claims: depsPartage.claims ?? null,
   };
 
   const server = new Server({ name: NOM_SERVEUR, version: VERSION }, { capabilities: { tools: {}, resources: {} } });

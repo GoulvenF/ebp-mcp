@@ -4,6 +4,7 @@ import {
 } from "../../../dist/index.js";
 import type {
   AbonnementFamille,
+  ClaimsIdToken,
   ConfigResolue,
   DepsProcessusPartage,
   Dossier,
@@ -104,6 +105,7 @@ export function creerDepsPartageTest(
   overrides: {
     readonly config?: ConfigResolue;
     readonly generationTokenStore?: number | null;
+    readonly claims?: ClaimsIdToken | null;
   } = {},
 ) {
   const config = overrides.config ?? creerConfigServeurTest();
@@ -120,6 +122,7 @@ export function creerDepsPartageTest(
     clock,
     tokenStore,
     journal,
+    claims: overrides.claims ?? null,
   };
   return { depsPartage, config, clock, transport, quota, hookToken, journal, tokenStore };
 }

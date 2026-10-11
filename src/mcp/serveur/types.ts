@@ -1,4 +1,5 @@
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import type { ClaimsIdToken } from "../../auth/client-token.js";
 import type { ConfigResolue } from "../../config/resolution.js";
 import type { Mode } from "../../domain/envelope.js";
 import type { DependancesClientHttp } from "../../http/client.js";
@@ -21,6 +22,8 @@ export interface DepsProcessusPartage {
   readonly clock: Clock;
   readonly tokenStore: TokenStore;
   readonly journal: JournalMcp;
+  /** Claims décodés de l'`id_token` le plus récent (07 §3), transmis tels quels à `ebp_statut` ; absent ⇒ `null`. */
+  readonly claims?: ClaimsIdToken | null;
 }
 
 /** `mode` obligatoire, sans défaut ni déduction depuis le transport (D-T12-14). */
