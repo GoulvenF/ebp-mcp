@@ -64,6 +64,8 @@ export function enveloppeSchema<T extends z.ZodType>(resultat: T) {
     resultats: z.array(resultat),
     pagination: PaginationSchema.nullable(),
     meta: MetaSchema,
+    /** Brut EBP aligné 1:1 (D-T12-7, extension additive) : absent si `inclure_brut: false`. */
+    bruts: z.array(z.unknown()).nullable().optional(),
   });
 }
 

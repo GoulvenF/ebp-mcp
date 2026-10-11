@@ -10,4 +10,5 @@ export * from "./adapters/hubbix-gescom/index.js";
 export * from "./adapters/compta/index.js";
 export * from "./pagination/index.js";
 export * from "./services/index.js";
+export * from "./mcp/index.js";
 export * from "./version.js";

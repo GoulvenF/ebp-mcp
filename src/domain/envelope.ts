@@ -49,4 +49,10 @@ export interface Enveloppe<T> {
   resultats: T[];
   pagination: Pagination | null;
   meta: Meta;
+  /**
+   * Brut EBP aligné 1:1 sur `resultats` (D-T12-7, extension additive) : présent **uniquement** si
+   * `inclure_brut: true` a été demandé ; absent sinon. `null` quand le brut sérialisé dépasse le
+   * plafond de 1 Mio (avertissement associé dans `meta.avertissements`).
+   */
+  bruts?: readonly unknown[] | null;
 }
