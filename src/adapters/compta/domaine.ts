@@ -51,6 +51,8 @@ export async function lireInformationDomaine(
 export interface FicheParametresDossier {
   readonly resultat: ParametresDossier;
   readonly avertissements: string[];
+  /** Élément source EBP validé (D-T11-14), jamais transformé. */
+  readonly sourceEbp: unknown;
 }
 
 /**
@@ -84,5 +86,6 @@ export async function lireParametresDossier(
       mode_saisie: mode,
     },
     avertissements,
+    sourceEbp: source,
   };
 }
