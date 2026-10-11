@@ -4,8 +4,12 @@ import { resoudreConfig } from "../../../dist/index.js";
 export const TENANT_ID_CPT = "11111111-1111-4111-8111-111111111111";
 export const TENANT_ID_CPT_2 = "11111111-1111-4111-8111-111111111112";
 export const DOMAIN_ID_GC = "22222222-2222-4222-8222-222222222222";
+export const TENANT_ID_PREPROD = "33333333-3333-4333-8333-333333333333";
 
-/** Fichier `config.json` minimal, un profil `default`, un groupe de quota `grp` partagé par les 2 familles. */
+/**
+ * Fichier `config.json` minimal, un profil `default` (environnement actif `prod`), un groupe de quota
+ * `grp` partagé par les 2 familles, et un dossier `preprod` qui ne doit jamais apparaître en `prod`.
+ */
 export function fichierContexte(overrides?: {
   enabledFamilies?: string[];
   dossiersProd?: unknown[];
@@ -27,7 +31,7 @@ export function fichierContexte(overrides?: {
             { alias: "dossier-cpt", famille: "hubbix-compta", nom: "Dossier CPT", tenantId: TENANT_ID_CPT },
             { alias: "dossier-gc", famille: "hubbix-gescom", nom: null, domainId: DOMAIN_ID_GC },
           ],
-          preprod: [],
+          preprod: [{ alias: "dossier-preprod", famille: "hubbix-compta", nom: "Dossier préprod", tenantId: TENANT_ID_PREPROD }],
         },
         defaultDossier: { prod: overrides?.defaultDossierProd ?? "dossier-cpt" },
       },
