@@ -4,42 +4,20 @@ import { z } from "zod";
 import { exigerFamilleActive, resoudreDossier } from "../../config/dossiers.js";
 import type { ConfigResolue } from "../../config/resolution.js";
 import { enveloppeSchema } from "../../domain/schemas/commun.js";
-import { CompteGeneralSchema, ExerciceSchema, JournalSchema, TauxTvaCptSchema } from "../../domain/schemas/compta.js";
+import { CompteGeneralSchema, JournalSchema, TauxTvaCptSchema } from "../../domain/schemas/compta.js";
 import { TauxTvaSchema } from "../../domain/schemas/gescom.js";
 import type { Enveloppe, Mode } from "../../domain/envelope.js";
-import type { ContexteHttp } from "../../http/client.js";
 import { idRequeteCourt } from "../../http/journal-http.js";
-import type { ExecutionContext } from "../../ports/execution-context.js";
 import { erreurNonTrouve } from "../../services/commun/erreurs.js";
-import type { ContexteService, DepsService } from "../../services/commun/types.js";
 import { listerDossiersContexte } from "../../services/contexte/lister-dossiers.js";
 import { ListerDossiersContexteSchema } from "../../services/contexte/schemas.js";
 import { GLOSSAIRE, TermeGlossaireSchema } from "../../services/ressources/glossaire.js";
 import { RESSOURCES_DOSSIER } from "../../services/ressources/registre.js";
-import { BUDGET_TENTATIVES_OUTIL, DEADLINE_OUTIL_MS } from "../execution/constantes.js";
+import { ResultatExercicesSchema } from "../execution/registre.js";
+import { executerServiceDossier } from "../execution/pipeline.js";
 import type { DepsProcessus, OptionsExecution, SessionMcp } from "../execution/types.js";
-import { creerCompteursAppel, envelopperHookToken, envelopperTransport } from "../execution/wrappers.js";
-import {
-  appliquerPolitiqueSortie,
-  construireEnveloppe,
-  construireEnveloppeContexte,
-  entreeJournalErreur,
-  verifierPlafondFiche,
-  verifierPlafondFinal,
-  versErreurMetier,
-} from "../sortie/index.js";
-import { PLAFOND_SORTIE_OCTETS } from "../sortie/plafonds.js";
+import { appliquerPolitiqueSortie, construireEnveloppeContexte, entreeJournalErreur, verifierPlafondFiche, verifierPlafondFinal, versErreurMetier } from "../sortie/index.js";
 import type { CodeErreur } from "../../domain/errors.js";
-
-const SIGNAL_JAMAIS_ANNULE = new AbortController().signal;
-
-/**
- * `{exercices}` (D-T11-16, `services/compta/exercices.ts`) : même forme que le résultat unique du
- * service `exercices`, réutilisé tel quel comme ressource de dossier (`RESSOURCES_DOSSIER`).
- * Dupliqué ici à l'identique plutôt que ré-exporté par le lot 1 (`mcp/execution/registre.ts` ne
- * l'exporte pas) : une seule ligne de forme, aucune logique.
- */
-const ResultatExercicesSchema = z.object({ exercices: z.array(ExerciceSchema) });
 
 /** Schéma de sortie par suffixe de ressource de dossier (D-T12-13), un seul élément de `resultats`. */
 const SCHEMAS_SORTIE_RESSOURCES_DOSSIER: Record<string, z.ZodType> = {
@@ -182,73 +160,20 @@ async function lireRessourceDossier(
   const dossier = resoudreDossier(deps.config, { dossier: alias }, null);
   exigerFamilleActive(deps.config, dossier.famille);
 
-  const executionContext: ExecutionContext = {
-    profil: deps.config.profil,
-    environnement: deps.config.environnement,
-    identiteGeneration: await (async () => {
-      const enregistrement = await deps.tokenStore.read({
-        profil: deps.config.identiteStore.profil,
-        environnement: deps.config.identiteStore.environnement,
-        empreinteClientId: deps.config.identiteStore.empreinteClient,
-      });
-      return enregistrement?.generation ?? 0;
-    })(),
-    dossier: dossier.id,
-    budgetRestant: BUDGET_TENTATIVES_OUTIL,
-    deadline: new Date(debut.getTime() + DEADLINE_OUTIL_MS),
-    signal: options.signal ?? SIGNAL_JAMAIS_ANNULE,
-  };
-
-  const abonnement = deps.config.abonnementPourFamille(dossier.famille);
-  const contexteHttp: ContexteHttp = {
-    environnement: deps.config.environnement,
-    famille: dossier.famille,
-    dossierId: dossier.id,
-    subscriptionKey: abonnement.cle,
-    groupeQuota: abonnement.groupeQuota,
-  };
-
-  const compteurs = creerCompteursAppel();
-  const depsService: DepsService = {
-    http: {
-      ...deps.http,
-      transport: envelopperTransport(deps.http.transport, compteurs),
-      hookToken: envelopperHookToken(deps.http.hookToken, compteurs),
-    },
-    scan: { ...deps.scan, plafondOctetsResultats: PLAFOND_SORTIE_OCTETS },
-    clock: deps.clock,
-  };
-  const ctxService: ContexteService = { execution: executionContext, http: contexteHttp, dossier };
-
-  const resultatService = await definition.service(depsService, ctxService, {});
-
-  let quotaJourRestant: number | null = null;
-  let quotaUtilisable: number | null = null;
-  let quotaEstime: boolean | null = null;
-  const avertissementsSupplementaires: string[] = [];
-  try {
-    const statut = await deps.http.quota.getStatut(contexteHttp.groupeQuota);
-    quotaJourRestant = statut.quotaJourRestant;
-    quotaUtilisable = statut.quotaUtilisable;
-    quotaEstime = statut.quotaEstime;
-  } catch {
-    avertissementsSupplementaires.push("Lecture du quota impossible : `quota_*` à `null`.");
-  }
-
-  const fin = deps.clock.now();
-  const enveloppeBrute = construireEnveloppe(resultatService, {
-    mode: options.mode,
-    observeA: fin.toISOString(),
-    dureeMs: fin.getTime() - debut.getTime(),
-    appelsApi: compteurs.appelsApi,
-    appelsAuth: compteurs.appelsAuth,
-    quotaJourRestant,
-    quotaUtilisable,
-    quotaEstime,
-    avertissementsSupplementaires,
-  });
-  const enveloppeMasquee = appliquerPolitiqueSortie(enveloppeBrute, options.politique);
-  return finaliserEtSerialiser(enveloppeMasquee, schemaResultat, `ebp://{dossier}/${suffixe}`);
+  // Étapes 5 à 8 du pipeline (D-T12-3/D-T12-13), communes avec `executerOutilMetier` : même
+  // `ExecutionContext` (budget, deadline), même `ContexteHttp`, même appel de service, même
+  // politique de sortie, même validation de schéma et plafonds.
+  const enveloppeFinale = await executerServiceDossier(
+    deps,
+    options,
+    debut,
+    dossier,
+    definition.service,
+    {},
+    schemaResultat,
+    `ebp://{dossier}/${suffixe}`,
+  );
+  return JSON.stringify(enveloppeFinale);
 }
 
 async function resoudreEtLireRessource(

@@ -3,6 +3,8 @@ import {
   BUDGET_TENTATIVES_OUTIL,
   DEADLINE_OUTIL_MS,
   executerOutilMetier,
+  executerServiceDossier,
+  ResultatExercicesSchema,
   REGISTRE_SERVICES,
 } from "../../../dist/index.js";
 import type { ExecutionContext, ResultatService, ServiceOutil } from "../../../dist/index.js";
@@ -148,6 +150,46 @@ describe("executerOutilMetier — pipeline D-T12-3", () => {
       expect(reponse.isError).toBe(false);
       expect(contexteRecu?.budgetRestant).toBe(BUDGET_TENTATIVES_OUTIL);
       expect(contexteRecu?.deadline.getTime()).toBe(avant + DEADLINE_OUTIL_MS);
+    } finally {
+      REGISTRE_SERVICES.exercices = original;
+    }
+  });
+
+  it("une ressource de dossier consomme le même budget et la même deadline qu'un outil, via l'aide commune `executerServiceDossier` (D-T12-3, T12-4)", async () => {
+    const deps = creerDepsProcessusTest([]);
+    let contexteOutil: ExecutionContext | undefined;
+    const original = REGISTRE_SERVICES.exercices;
+    REGISTRE_SERVICES.exercices = (async (_depsService, ctx, _entree) => {
+      contexteOutil = ctx.execution;
+      return resultatServiceVide(ctx.dossier.id);
+    }) as ServiceOutil;
+    try {
+      const session = creerSessionMcpTest(deps.config);
+      const avantOutil = deps.clock.now().getTime();
+      const reponseOutil = await executerOutilMetier(deps, session, "exercices", { dossier: DOSSIER_CPT.alias }, OPTIONS_MOCK);
+      expect(reponseOutil.isError).toBe(false);
+
+      let contexteRessource: ExecutionContext | undefined;
+      const serviceRessource: ServiceOutil = async (_depsService, ctx, _entree) => {
+        contexteRessource = ctx.execution;
+        return resultatServiceVide(ctx.dossier.id);
+      };
+      const avantRessource = deps.clock.now().getTime();
+      await executerServiceDossier(
+        deps,
+        OPTIONS_MOCK,
+        deps.clock.now(),
+        DOSSIER_CPT,
+        serviceRessource,
+        {},
+        ResultatExercicesSchema,
+        "ebp://{dossier}/exercices",
+      );
+
+      expect(contexteOutil?.budgetRestant).toBe(BUDGET_TENTATIVES_OUTIL);
+      expect(contexteRessource?.budgetRestant).toBe(BUDGET_TENTATIVES_OUTIL);
+      expect(contexteOutil?.deadline.getTime()).toBe(avantOutil + DEADLINE_OUTIL_MS);
+      expect(contexteRessource?.deadline.getTime()).toBe(avantRessource + DEADLINE_OUTIL_MS);
     } finally {
       REGISTRE_SERVICES.exercices = original;
     }
