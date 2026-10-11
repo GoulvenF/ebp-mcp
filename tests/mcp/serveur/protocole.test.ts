@@ -430,7 +430,7 @@ describe("ressources (D-T12-13)", () => {
     expect(contenu.resultats).toHaveLength(100);
     expect(contenu.pagination.curseur).toBeNull();
     expect(contenu.pagination.hasMore).toBe(true);
-    expect(contenu.completude).not.toBe("complete");
+    expect(contenu.completude).toBe("page");
     expect(contenu.meta.avertissements).toContain("ressource limitée aux 100 premiers éléments ; aucune continuation en v0.1");
   });
 
