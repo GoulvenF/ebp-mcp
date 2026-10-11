@@ -34,6 +34,8 @@ export interface PageTransactionsBancaires {
   readonly total_source: number | null;
   readonly renvoyes: number;
   readonly avertissements: string[];
+  /** Éléments source EBP validés, alignés 1:1 avec `resultats` (D-T11-14) : jamais transformés. */
+  readonly sourcesEbp: unknown[];
 }
 
 /**
@@ -58,12 +60,14 @@ export async function listerTransactionsBancaires(
   const corps = await executerRequetePourRoute(deps, budget, contexte, "cpt-bank-transactions", { parametres });
   const enveloppe = lireEnveloppeData("cpt-bank-transactions", corps);
   const avertissements: string[] = [];
+  const sourcesEbp: unknown[] = [];
   const resultats = enveloppe.elements.map((brut): TransactionBancaire => {
     const resultat = BankTransactionEbpSchema.safeParse(brut);
     if (!resultat.success) {
       throw erreurEnveloppeInattendueCompta("cpt-bank-transactions");
     }
     const source = resultat.data;
+    sourcesEbp.push(source);
     const debit = montantDepuisSource(source.debit, "bank-transactions.debit", avertissements);
     const credit = montantDepuisSource(source.credit, "bank-transactions.credit", avertissements);
     const statutSource =
@@ -81,5 +85,5 @@ export async function listerTransactionsBancaires(
       statut_source: statutSource,
     };
   });
-  return { resultats, total_source: enveloppe.totalSource, renvoyes: resultats.length, avertissements };
+  return { resultats, total_source: enveloppe.totalSource, renvoyes: resultats.length, avertissements, sourcesEbp };
 }

@@ -73,6 +73,8 @@ export interface PageLignesEcriture {
   readonly total_source: number | null;
   readonly renvoyes: number;
   readonly avertissements: string[];
+  /** Éléments source EBP validés, alignés 1:1 avec `resultats` (D-T11-14) : jamais transformés. */
+  readonly sourcesEbp: unknown[];
 }
 
 /**
@@ -106,6 +108,7 @@ export async function listerLignesEcriture(
   const corps = await executerRequetePourRoute(deps, budget, contexte, "cpt-lines-entries", { parametres });
   const elements = lireEnveloppeLinesEntries("cpt-lines-entries", corps);
   const avertissements: string[] = [];
+  const sourcesEbp: unknown[] = [];
   const rangDe = creerCompteurOccurrences();
   const resultats = elements.map((brut): LigneEcritureListe => {
     const resultat = LinesEntryEbpSchema.safeParse(brut);
@@ -113,6 +116,7 @@ export async function listerLignesEcriture(
       throw erreurEnveloppeInattendueCompta("cpt-lines-entries");
     }
     const source = resultat.data;
+    sourcesEbp.push(source);
     const { mode, avertissement } = mapperMode(source.entry.entryMode);
     if (avertissement !== null) avertissements.push(avertissement);
     const debit = montantDepuisSource(source.debit, "lines-entries.debit", avertissements);
@@ -138,12 +142,14 @@ export async function listerLignesEcriture(
     avertissements.unshift(AVERT_ECRITURE_NON_IDENTIFIEE_LINES_ENTRIES);
   }
   // `/lines-entries` ne documente aucun total (02 §2) : `total_source` reste `null`, jamais inventé.
-  return { resultats, total_source: null, renvoyes: resultats.length, avertissements };
+  return { resultats, total_source: null, renvoyes: resultats.length, avertissements, sourcesEbp };
 }
 
 export interface FicheEcriture {
   readonly resultat: Ecriture;
   readonly avertissements: string[];
+  /** Élément source EBP validé (D-T11-14), jamais transformé. */
+  readonly sourceEbp: unknown;
 }
 
 /**
@@ -188,6 +194,7 @@ export async function lireEcriture(
   return {
     resultat: { id: uuid, journal: source.journal, date: source.date, mode: mode ?? "inconnu", lignes },
     avertissements,
+    sourceEbp: source,
   };
 }
 
