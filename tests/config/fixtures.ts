@@ -1,4 +1,16 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { EntreesResolution, Journal, OptionsCli, VariablesEnv } from "../../dist/config/index.js";
+
+/** Répertoire temporaire sous un préfixe propre, nettoyé par le test appelant. */
+export async function creerRepertoireTemporaire(): Promise<string> {
+  return mkdtemp(join(tmpdir(), "ebp-mcp-config-"));
+}
+
+export async function nettoyerRepertoire(chemin: string): Promise<void> {
+  await rm(chemin, { recursive: true, force: true });
+}
 
 export function journalEspion(): Journal & { readonly messages: string[] } {
   const messages: string[] = [];

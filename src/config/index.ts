@@ -10,3 +10,4 @@ export * from "./dossiers.js";
 export * from "./resolution.js";
 export * from "./session.js";
 export * from "./lecteur-fs.js";
+export * from "./ecriture.js";
