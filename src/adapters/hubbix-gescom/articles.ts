@@ -38,7 +38,16 @@ function mapperActif(itemStatus: unknown): { actif: boolean | null; avertissemen
  * cette route), enums via `interpreterEnum` (`inconnu` + avertissement, jamais de repli silencieux).
  * Forme inattendue (champ documenté manquant ou de type différent) ⇒ `UPSTREAM_SCHEMA_CHANGED`.
  */
-function mapperArticle(brut: unknown, routeId: string, avertissements: string[]): Article {
+/**
+ * Mappe et renvoie en plus l'élément source **validé** par `ArticleEbpSchema` (extension
+ * additive D-T11-14) : `source` sert exclusivement à `inclure_brut`, jamais au mapping lui-même
+ * qui reste basé sur les champs déjà extraits ci-dessous.
+ */
+function mapperArticleAvecSource(
+  brut: unknown,
+  routeId: string,
+  avertissements: string[],
+): { article: Article; source: unknown } {
   const resultat = ArticleEbpSchema.safeParse(brut);
   if (!resultat.success) {
     throw erreurEnveloppeInattendue(routeId);
@@ -49,16 +58,23 @@ function mapperArticle(brut: unknown, routeId: string, avertissements: string[])
   const { actif, avertissement: avertissementActif } = mapperActif(source.itemStatus);
   if (avertissementActif !== null) avertissements.push(avertissementActif);
   return {
-    id: source.id,
-    code: source.code,
-    libelle: source.label,
-    type,
-    prix_ht: decimalDepuisLexeme(source.priceVatExcluded),
-    prix_ttc: decimalDepuisLexeme(source.priceVatIncluded),
-    taux_tva: decimalDepuisLexeme(source.vatRate),
-    devise: null,
-    actif,
+    article: {
+      id: source.id,
+      code: source.code,
+      libelle: source.label,
+      type,
+      prix_ht: decimalDepuisLexeme(source.priceVatExcluded),
+      prix_ttc: decimalDepuisLexeme(source.priceVatIncluded),
+      taux_tva: decimalDepuisLexeme(source.vatRate),
+      devise: null,
+      actif,
+    },
+    source,
   };
+}
+
+function mapperArticle(brut: unknown, routeId: string, avertissements: string[]): Article {
+  return mapperArticleAvecSource(brut, routeId, avertissements).article;
 }
 
 function validerSkipTake(skip: number, take: number): void {
@@ -83,6 +99,8 @@ export interface PageArticles {
   readonly skip_demande: number;
   readonly skip_renvoye: number;
   readonly avertissements: string[];
+  /** Éléments source validés, alignés 1:1 avec `resultats` (D-T11-14, extension additive). */
+  readonly sourcesEbp: unknown[];
 }
 
 /**
@@ -105,7 +123,12 @@ export async function listerArticles(
     throw erreurPaginationInvalide("gc-items", requete.skip, enveloppe.skipRenvoye);
   }
   const avertissements: string[] = [];
-  const resultats = enveloppe.elements.map((brut) => mapperArticle(brut, "gc-items", avertissements));
+  const sourcesEbp: unknown[] = [];
+  const resultats = enveloppe.elements.map((brut) => {
+    const { article, source } = mapperArticleAvecSource(brut, "gc-items", avertissements);
+    sourcesEbp.push(source);
+    return article;
+  });
   return {
     resultats,
     total_source: enveloppe.totalSource,
@@ -113,12 +136,15 @@ export async function listerArticles(
     skip_demande: requete.skip,
     skip_renvoye: enveloppe.skipRenvoye,
     avertissements,
+    sourcesEbp,
   };
 }
 
 export interface FicheArticle {
   readonly resultat: Article;
   readonly avertissements: string[];
+  /** Élément source validé (D-T11-14, extension additive), pour `inclure_brut` uniquement. */
+  readonly sourceEbp: unknown;
 }
 
 async function lireArticleDetail(
@@ -131,8 +157,8 @@ async function lireArticleDetail(
   const corps = await executerRequetePourRoute(deps, budget, contexte, routeId, { segments: { id } });
   const fiche = lireFiche(routeId, corps);
   const avertissements: string[] = [];
-  const resultat = mapperArticle(fiche, routeId, avertissements);
-  return { resultat, avertissements };
+  const { article, source } = mapperArticleAvecSource(fiche, routeId, avertissements);
+  return { resultat: article, avertissements, sourceEbp: source };
 }
 
 /**

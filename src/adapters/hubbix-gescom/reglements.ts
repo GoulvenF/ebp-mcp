@@ -33,7 +33,7 @@ function mapperType(settlementType: unknown): { type: Reglement["type"]; avertis
  * ne fournit aucun ID client sur cette route, seulement `customerName` — aucun rapprochement par
  * nom (07 §1).
  */
-function mapperReglement(brut: unknown, avertissements: string[]): Reglement {
+function mapperReglementAvecSource(brut: unknown, avertissements: string[]): { reglement: Reglement; source: unknown } {
   const resultat = ReglementEbpSchema.safeParse(brut);
   if (!resultat.success) {
     throw erreurEnveloppeInattendue("gc-settlements");
@@ -42,17 +42,24 @@ function mapperReglement(brut: unknown, avertissements: string[]): Reglement {
   const { type, avertissement } = mapperType(source.settlementType);
   if (avertissement !== null) avertissements.push(avertissement);
   return {
-    code: source.code,
-    date: source.date,
-    tiers_nom: source.customerName,
-    tiers_id: null,
-    montant: decimalDepuisLexeme(source.amount),
-    devise: null,
-    montant_restant_a_affecter: decimalDepuisLexeme(source.stillToBeDistributedAmount),
-    mode_paiement_libelle: source.paymentModeLabel,
-    reference: source.paymentReference,
-    type,
+    reglement: {
+      code: source.code,
+      date: source.date,
+      tiers_nom: source.customerName,
+      tiers_id: null,
+      montant: decimalDepuisLexeme(source.amount),
+      devise: null,
+      montant_restant_a_affecter: decimalDepuisLexeme(source.stillToBeDistributedAmount),
+      mode_paiement_libelle: source.paymentModeLabel,
+      reference: source.paymentReference,
+      type,
+    },
+    source,
   };
+}
+
+function mapperReglement(brut: unknown, avertissements: string[]): Reglement {
+  return mapperReglementAvecSource(brut, avertissements).reglement;
 }
 
 function validerSkipTake(skip: number, take: number): void {
@@ -78,6 +85,8 @@ export interface PageReglements {
   readonly skip_demande: number;
   readonly skip_renvoye: number;
   readonly avertissements: string[];
+  /** Éléments source validés, alignés 1:1 avec `resultats` (D-T11-14, extension additive). */
+  readonly sourcesEbp: unknown[];
 }
 
 /**
@@ -107,7 +116,12 @@ export async function listerReglements(
     throw erreurPaginationInvalide("gc-settlements", requete.skip, enveloppe.skipRenvoye);
   }
   const avertissements: string[] = [];
-  const resultats = enveloppe.elements.map((brut) => mapperReglement(brut, avertissements));
+  const sourcesEbp: unknown[] = [];
+  const resultats = enveloppe.elements.map((brut) => {
+    const { reglement, source } = mapperReglementAvecSource(brut, avertissements);
+    sourcesEbp.push(source);
+    return reglement;
+  });
   return {
     resultats,
     total_source: enveloppe.totalSource,
@@ -115,5 +129,6 @@ export async function listerReglements(
     skip_demande: requete.skip,
     skip_renvoye: enveloppe.skipRenvoye,
     avertissements,
+    sourcesEbp,
   };
 }

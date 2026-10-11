@@ -15,7 +15,10 @@ import { DocumentVenteListeEbpSchema } from "./schemas-ebp.js";
  * détail). Montant d'avoir déjà négatif conservé tel quel, aucune normalisation de signe ici (07
  * §8 réserve ce choix à T11).
  */
-function mapperDocumentListe(brut: unknown, avertissements: string[]): DocumentVente {
+function mapperDocumentListeAvecSource(
+  brut: unknown,
+  avertissements: string[],
+): { document: DocumentVente; source: unknown } {
   const resultat = DocumentVenteListeEbpSchema.safeParse(brut);
   if (!resultat.success) {
     throw erreurEnveloppeInattendue("gc-sale-documents");
@@ -30,21 +33,36 @@ function mapperDocumentListe(brut: unknown, avertissements: string[]): DocumentV
   );
   if (avertissementComptable !== null) avertissements.push(avertissementComptable);
   return {
-    id: source.id,
-    type,
-    statut,
-    tiers_nom: source.name,
-    tiers_id: null,
-    date: source.date,
-    numero: source.number,
-    montant_ht: decimalDepuisLexeme(source.totalAmountVatExcluded),
-    montant_ttc: decimalDepuisLexeme(source.totalAmountVatIncluded),
-    montant_net_ttc: decimalDepuisLexeme(source.netAmountVatIncluded),
-    devise: null,
-    reste_du: decimalDepuisLexeme(source.dueAmount),
-    statut_comptable,
-    lignes: null,
+    document: {
+      id: source.id,
+      type,
+      statut,
+      tiers_nom: source.name,
+      tiers_id: null,
+      date: source.date,
+      numero: source.number,
+      montant_ht: decimalDepuisLexeme(source.totalAmountVatExcluded),
+      montant_ttc: decimalDepuisLexeme(source.totalAmountVatIncluded),
+      montant_net_ttc: decimalDepuisLexeme(source.netAmountVatIncluded),
+      devise: null,
+      reste_du: decimalDepuisLexeme(source.dueAmount),
+      statut_comptable,
+      lignes: null,
+    },
+    source,
   };
+}
+
+/**
+ * Mappe un élément de `/sale-documents` vers le domaine (02 §3, A14) : `tiers_id` reste toujours
+ * `null` (le nom client est fourni sans ID sur cette route), `dueAmount` est le reste dû du
+ * **document**, distinct du reste dû d'une échéance individuelle (`echeances.ts`). `lignes`
+ * reste `null` : la liste ne fournit jamais les lignes d'un document (`documents-detail.ts` pour
+ * le détail). Montant d'avoir déjà négatif conservé tel quel, aucune normalisation de signe ici
+ * (07 §8 réserve ce choix à T11).
+ */
+function mapperDocumentListe(brut: unknown, avertissements: string[]): DocumentVente {
+  return mapperDocumentListeAvecSource(brut, avertissements).document;
 }
 
 function validerSkipTake(skip: number, take: number): void {
@@ -69,6 +87,8 @@ export interface PageDocuments {
   readonly skip_demande: number;
   readonly skip_renvoye: number;
   readonly avertissements: string[];
+  /** Éléments source validés, alignés 1:1 avec `resultats` (D-T11-14, extension additive). */
+  readonly sourcesEbp: unknown[];
 }
 
 /**
@@ -90,7 +110,12 @@ export async function listerDocumentsVente(
     throw erreurPaginationInvalide("gc-sale-documents", requete.skip, enveloppe.skipRenvoye);
   }
   const avertissements: string[] = [];
-  const resultats = enveloppe.elements.map((brut) => mapperDocumentListe(brut, avertissements));
+  const sourcesEbp: unknown[] = [];
+  const resultats = enveloppe.elements.map((brut) => {
+    const { document, source } = mapperDocumentListeAvecSource(brut, avertissements);
+    sourcesEbp.push(source);
+    return document;
+  });
   return {
     resultats,
     total_source: enveloppe.totalSource,
@@ -98,5 +123,6 @@ export async function listerDocumentsVente(
     skip_demande: requete.skip,
     skip_renvoye: enveloppe.skipRenvoye,
     avertissements,
+    sourcesEbp,
   };
 }

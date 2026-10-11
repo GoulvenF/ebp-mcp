@@ -16,6 +16,32 @@ function opaque(valeur: unknown): string | null {
   return null;
 }
 
+function mapperEcheanceAvecSource(brut: unknown): { echeance: Echeance; source: unknown } {
+  const resultat = EcheanceEbpSchema.safeParse(brut);
+  if (!resultat.success) {
+    throw erreurEnveloppeInattendue("gc-sale-commitments");
+  }
+  const source = resultat.data;
+  return {
+    echeance: {
+      id: source.id,
+      date: source.date,
+      tiers_id: source.customer?.id ?? null,
+      tiers_nom: source.customer?.name ?? null,
+      tiers_code: source.customer?.code ?? null,
+      document_id: source.document?.id ?? null,
+      document_numero: source.document?.number ?? null,
+      document_type: opaque(source.document?.documentType),
+      document_statut: opaque(source.document?.documentStatus),
+      mode_paiement: source.paymentMode,
+      montant: decimalDepuisLexeme(source.amount),
+      devise: null,
+      reste_du: decimalDepuisLexeme(source.remainingAmount),
+    },
+    source,
+  };
+}
+
 /**
  * Mappe un élément de `/sale-commitments` (02 §3). `remainingAmount` de l'**échéance** est
  * mappé sur `reste_du` — distinct du `dueAmount` du **document** (`documents.ts`), jamais
@@ -24,26 +50,7 @@ function opaque(valeur: unknown): string | null {
  * référence de routage (07 §5/§6).
  */
 function mapperEcheance(brut: unknown): Echeance {
-  const resultat = EcheanceEbpSchema.safeParse(brut);
-  if (!resultat.success) {
-    throw erreurEnveloppeInattendue("gc-sale-commitments");
-  }
-  const source = resultat.data;
-  return {
-    id: source.id,
-    date: source.date,
-    tiers_id: source.customer?.id ?? null,
-    tiers_nom: source.customer?.name ?? null,
-    tiers_code: source.customer?.code ?? null,
-    document_id: source.document?.id ?? null,
-    document_numero: source.document?.number ?? null,
-    document_type: opaque(source.document?.documentType),
-    document_statut: opaque(source.document?.documentStatus),
-    mode_paiement: source.paymentMode,
-    montant: decimalDepuisLexeme(source.amount),
-    devise: null,
-    reste_du: decimalDepuisLexeme(source.remainingAmount),
-  };
+  return mapperEcheanceAvecSource(brut).echeance;
 }
 
 function validerSkipTake(skip: number, take: number): void {
@@ -67,6 +74,8 @@ export interface PageEcheances {
   readonly skip_demande: number;
   readonly skip_renvoye: number;
   readonly avertissements: string[];
+  /** Éléments source validés, alignés 1:1 avec `resultats` (D-T11-14, extension additive). */
+  readonly sourcesEbp: unknown[];
 }
 
 /** Lit une page de `/sale-commitments` (échéancier, 02 §3). Aucun calcul de retard ici (T11). */
@@ -84,7 +93,12 @@ export async function listerEcheances(
   if (enveloppe.skipRenvoye !== requete.skip) {
     throw erreurPaginationInvalide("gc-sale-commitments", requete.skip, enveloppe.skipRenvoye);
   }
-  const resultats = enveloppe.elements.map(mapperEcheance);
+  const sourcesEbp: unknown[] = [];
+  const resultats = enveloppe.elements.map((brut) => {
+    const { echeance, source } = mapperEcheanceAvecSource(brut);
+    sourcesEbp.push(source);
+    return echeance;
+  });
   return {
     resultats,
     total_source: enveloppe.totalSource,
@@ -92,5 +106,6 @@ export async function listerEcheances(
     skip_demande: requete.skip,
     skip_renvoye: enveloppe.skipRenvoye,
     avertissements: [],
+    sourcesEbp,
   };
 }

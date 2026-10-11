@@ -1,1 +1,5 @@
-// Barrel vide (T11-1) : les services métier GC (lots 2–4) n'écrivent que dans ce répertoire.
+export { rechercherArticles, ficheArticle } from "./articles.js";
+export { listerDocumentsVenteService, detailDocument } from "./documents.js";
+export { echeancierClients, type EcheanceAvecRetard } from "./echeancier.js";
+export { listerReglementsService } from "./reglements.js";
+
