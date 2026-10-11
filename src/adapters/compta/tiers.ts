@@ -59,6 +59,8 @@ export interface PageTiers {
   readonly total_source: number | null;
   readonly renvoyes: number;
   readonly avertissements: string[];
+  /** Éléments source EBP validés, alignés 1:1 avec `resultats` (D-T11-14) : jamais transformés. */
+  readonly sourcesEbp: unknown[];
 }
 
 /**
@@ -81,19 +83,23 @@ export async function listerTiers(
   const corps = await executerRequetePourRoute(deps, budget, contexte, "cpt-auxiliary-accounts", { parametres });
   const enveloppe = lireEnveloppeData("cpt-auxiliary-accounts", corps);
   const avertissements: string[] = [];
+  const sourcesEbp: unknown[] = [];
   const resultats = enveloppe.elements.map((brut): Tiers => {
     const resultat = AuxiliaryAccountEbpSchema.safeParse(brut);
     if (!resultat.success) {
       throw erreurEnveloppeInattendueCompta("cpt-auxiliary-accounts");
     }
+    sourcesEbp.push(resultat.data);
     return { ...mapperTiersListe(resultat.data, avertissements), email: null, telephone: null };
   });
-  return { resultats, total_source: enveloppe.totalSource, renvoyes: resultats.length, avertissements };
+  return { resultats, total_source: enveloppe.totalSource, renvoyes: resultats.length, avertissements, sourcesEbp };
 }
 
 export interface FicheTiers {
   readonly resultat: Tiers;
   readonly avertissements: string[];
+  /** Élément source EBP validé (D-T11-14), jamais transformé. */
+  readonly sourceEbp: unknown;
 }
 
 /** `/auxiliary-accounts/{number}` (02 §2) : fiche + `contact.email`, non garanti par la liste. */
@@ -120,6 +126,7 @@ export async function lireTiers(
       telephone: null,
     },
     avertissements,
+    sourceEbp: source,
   };
 }
 
