@@ -2,7 +2,7 @@
 // `code_verifier`, rotation du refresh token.
 import { createHash, randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { creerIdentiteMock } from "../../dist/index.js";
+import { creerIdentiteMock, PREFIXE_REFRESH_TOKEN_MOCK } from "../../dist/index.js";
 
 function pkceS256(verifier: string): string {
   return createHash("sha256").update(verifier, "utf8").digest("base64url");
@@ -41,9 +41,13 @@ describe("creerIdentiteMock (D-T13-5, critère #6)", () => {
     expect(segments).toHaveLength(3);
     const claims = JSON.parse(Buffer.from(segments[1]!, "base64url").toString("utf8")) as {
       sub: string;
+      name: string;
+      email: string;
       "ebp.email": string;
     };
     expect(claims.sub).toBeTruthy();
+    expect(claims.name).toBeTruthy();
+    expect(claims.email.endsWith("@example.invalid")).toBe(true);
     expect(claims["ebp.email"].endsWith("@example.invalid")).toBe(true);
   });
 
@@ -96,11 +100,26 @@ describe("creerIdentiteMock (D-T13-5, critère #6)", () => {
     expect(JSON.parse(reponse.body)).toEqual({ error: "invalid_grant" });
   });
 
-  it("refresh_token : accepte tout `mock-rt-…` émis et non consommé, puis fait tourner (rotation)", async () => {
+  it("PKCE obligatoire (profil `pkce: required`) : un code émis sans `code_challenge` donne `invalid_grant` à l'échange, quel que soit le `code_verifier`", async () => {
     const identite = creerIdentiteMock();
     const code = identite.emettreCode({ redirectUri: "http://127.0.0.1:1/callback" });
+    const reponse = await identite.traiterRequeteToken(
+      corpsAuthorizationCode({ code, redirect_uri: "http://127.0.0.1:1/callback", code_verifier: "peu-importe" }),
+    );
+    expect(reponse.status).toBe(400);
+    expect(JSON.parse(reponse.body)).toEqual({ error: "invalid_grant" });
+  });
+
+  it("refresh_token : accepte tout `mock-rt-…` émis et non consommé, puis fait tourner (rotation)", async () => {
+    const identite = creerIdentiteMock();
+    const verifier = randomBytes(32).toString("base64url");
+    const code = identite.emettreCode({ redirectUri: "http://127.0.0.1:1/callback", codeChallenge: pkceS256(verifier) });
     const premierEchange = await identite.traiterRequeteToken(
-      corpsAuthorizationCode({ code, redirect_uri: "http://127.0.0.1:1/callback" }),
+      corpsAuthorizationCode({
+        code,
+        redirect_uri: "http://127.0.0.1:1/callback",
+        code_verifier: verifier,
+      }),
     );
     const { refresh_token: refreshInitial } = JSON.parse(premierEchange.body) as { refresh_token: string };
 
@@ -123,9 +142,21 @@ describe("creerIdentiteMock (D-T13-5, critère #6)", () => {
     expect(reponseSuivante.status).toBe(200);
   });
 
-  it("un refresh_token inconnu (jamais émis) donne `invalid_grant`", async () => {
+  it("un `mock-rt-…` jamais émis par cette instance est accepté une fois (autre processus `login --mock`), puis un second usage donne `invalid_grant`", async () => {
     const identite = creerIdentiteMock();
-    const reponse = await identite.traiterRequeteToken(corpsRefresh("mock-rt-jamais-emis"));
+    const refreshDunAutreProcessus = `${PREFIXE_REFRESH_TOKEN_MOCK}${randomBytes(16).toString("hex")}`;
+
+    const premier = await identite.traiterRequeteToken(corpsRefresh(refreshDunAutreProcessus));
+    expect(premier.status).toBe(200);
+
+    const second = await identite.traiterRequeteToken(corpsRefresh(refreshDunAutreProcessus));
+    expect(second.status).toBe(400);
+    expect(JSON.parse(second.body)).toEqual({ error: "invalid_grant" });
+  });
+
+  it("un token sans le préfixe `mock-rt-` donne `invalid_grant`", async () => {
+    const identite = creerIdentiteMock();
+    const reponse = await identite.traiterRequeteToken(corpsRefresh("un-token-sans-le-bon-prefixe"));
     expect(reponse.status).toBe(400);
     expect(JSON.parse(reponse.body)).toEqual({ error: "invalid_grant" });
   });

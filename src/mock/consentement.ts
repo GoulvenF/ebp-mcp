@@ -51,6 +51,8 @@ export function creerConsentementMock(identite: IdentiteMock): (url: string) => 
     callback.searchParams.set("code", code);
     callback.searchParams.set("state", state);
 
-    void envoyerCallbackAvecRetentatives(callback.toString());
+    // Échec en tâche de fond : ne doit jamais devenir une unhandled rejection qui ferait tomber
+    // le processus CLI. On laisse simplement le timeout de `login()` se déclencher.
+    void envoyerCallbackAvecRetentatives(callback.toString()).catch(() => {});
   };
 }

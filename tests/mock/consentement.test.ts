@@ -1,6 +1,7 @@
 // `creerConsentementMock` (D-T13-6, GOU-371) : lit state/redirect_uri/code_challenge de l'URL
 // d'autorisation, émet un code lié au challenge via l'identité simulée partagée, puis fait un VRAI
 // GET loopback (jamais vers EBP) sur `redirect_uri?code=…&state=…`.
+import { createHash, randomBytes } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { creerConsentementMock, creerIdentiteMock } from "../../dist/index.js";
@@ -87,9 +88,15 @@ describe("creerConsentementMock (D-T13-6)", () => {
     const identite = creerIdentiteMock();
     const consentement = creerConsentementMock(identite);
     const redirectUri = `http://127.0.0.1:${callback.port}/callback`;
+    // PKCE obligatoire (profil `pkce: required`, D-T13-6) : l'URL d'autorisation porte un
+    // `code_challenge` S256, et l'échange ci-dessous rejoue le `code_verifier` correspondant.
+    const verifier = randomBytes(32).toString("base64url");
+    const challenge = createHash("sha256").update(verifier, "utf8").digest("base64url");
     const urlAutorize = new URL("https://api-login.ebp.com/connect/authorize");
     urlAutorize.searchParams.set("redirect_uri", redirectUri);
     urlAutorize.searchParams.set("state", "s");
+    urlAutorize.searchParams.set("code_challenge", challenge);
+    urlAutorize.searchParams.set("code_challenge_method", "S256");
 
     await consentement(urlAutorize.toString());
     await attendreRequete(callback.requetes);
@@ -97,7 +104,12 @@ describe("creerConsentementMock (D-T13-6)", () => {
     const code = urlRecue.searchParams.get("code")!;
 
     const reponse = await identite.traiterRequeteToken(
-      new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: redirectUri }).toString(),
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: redirectUri,
+        code_verifier: verifier,
+      }).toString(),
     );
     expect(reponse.status).toBe(200);
   });

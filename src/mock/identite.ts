@@ -39,6 +39,8 @@ function jetonIdNonSigne(): string {
   const charge = Buffer.from(
     JSON.stringify({
       sub: "demo-user",
+      name: "Démo EBP",
+      email: "demo@example.invalid",
       "ebp.email": "demo@example.invalid",
       given_name: "Démo",
       family_name: "EBP",
@@ -65,11 +67,14 @@ function reponseInvalidGrant(): HttpResponseSpec {
  */
 export function creerIdentiteMock(): IdentiteMock {
   const codes = new Map<string, EnregistrementCode>();
-  const refreshValides = new Set<string>();
+  // D-T13-6 : « au refresh, l'endpoint simulé accepte tout refresh token au format mock
+  // (préfixe `mock-rt-`) qui n'a pas déjà été consommé dans ce processus » — pour que
+  // `serve --mock` (T13-3) accepte un token écrit par un `login --mock` d'un AUTRE processus.
+  // On ne suit donc que les refresh tokens déjà CONSOMMÉS, jamais l'ensemble des tokens émis.
+  const refreshConsommes = new Set<string>();
 
   function emettreTokens(): HttpResponseSpec {
     const refresh = nouveauJeton(PREFIXE_REFRESH_TOKEN_MOCK);
-    refreshValides.add(refresh);
     return reponseJson(200, {
       access_token: nouveauJeton(PREFIXE_ACCESS_TOKEN_MOCK),
       refresh_token: refresh,
@@ -99,12 +104,15 @@ export function creerIdentiteMock(): IdentiteMock {
         if (champs.get("redirect_uri") !== enregistrement.redirectUri) {
           return reponseInvalidGrant();
         }
-        if (enregistrement.codeChallenge !== undefined) {
-          const verifier = champs.get("code_verifier") ?? "";
-          const challengeCalcule = createHash("sha256").update(verifier, "utf8").digest("base64url");
-          if (challengeCalcule !== enregistrement.codeChallenge) {
-            return reponseInvalidGrant();
-          }
+        if (enregistrement.codeChallenge === undefined) {
+          // Profil `pkce: required` (D-T13-6, D-T13-7) : un code émis sans challenge ne peut jamais
+          // être échangé, quel que soit le `code_verifier` fourni.
+          return reponseInvalidGrant();
+        }
+        const verifier = champs.get("code_verifier") ?? "";
+        const challengeCalcule = createHash("sha256").update(verifier, "utf8").digest("base64url");
+        if (challengeCalcule !== enregistrement.codeChallenge) {
+          return reponseInvalidGrant();
         }
         enregistrement.utilise = true;
         return emettreTokens();
@@ -112,10 +120,10 @@ export function creerIdentiteMock(): IdentiteMock {
 
       if (grantType === "refresh_token") {
         const refresh = champs.get("refresh_token") ?? "";
-        if (!refresh.startsWith(PREFIXE_REFRESH_TOKEN_MOCK) || !refreshValides.has(refresh)) {
+        if (!refresh.startsWith(PREFIXE_REFRESH_TOKEN_MOCK) || refreshConsommes.has(refresh)) {
           return reponseInvalidGrant();
         }
-        refreshValides.delete(refresh);
+        refreshConsommes.add(refresh);
         return emettreTokens();
       }
 

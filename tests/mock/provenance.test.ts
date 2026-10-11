@@ -2,6 +2,9 @@
 // commentaire « synthétique », et aucun email hors `@example.invalid` n'apparaît nulle part dans le
 // jeu de données réellement exporté par le barrel (`src/mock/donnees/index.ts`, celui que
 // `creerTransportMock` consomme via `JEU_CPT_DEMO`/`JEU_GC_DEMO`).
+//
+// Revue : `compta.ts`/`gescom.ts` formaient un second jeu de données en doublon, jamais réexporté
+// ni consommé par `transport.ts` — supprimés, ne figurent plus ci-dessous.
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,11 +13,8 @@ import { JEU_CPT_DEMO, JEU_GC_DEMO } from "../../dist/index.js";
 
 const repoRoot = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 
-// Les modules réellement exportés par le barrel (`src/mock/donnees/index.ts`) : `cpt.ts`/`gc.ts`.
-// `compta.ts`/`gescom.ts` existent dans le répertoire mais ne sont réexportés par aucun barrel ni
-// importés par `transport.ts` (voir le commentaire de clôture de l'issue T13-1 pour le constat) ;
-// ils sont néanmoins vérifiés ici pour la provenance textuelle puisque le lot les a livrés.
-const MODULES_DONNEES = ["cpt.ts", "gc.ts", "compta.ts", "gescom.ts"] as const;
+// Les modules réellement exportés par le barrel (`src/mock/donnees/index.ts`).
+const MODULES_DONNEES = ["cpt.ts", "gc.ts"] as const;
 
 function emailsDansTexte(texte: string): string[] {
   const motif = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
