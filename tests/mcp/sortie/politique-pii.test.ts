@@ -34,7 +34,7 @@ describe("appliquerPolitiqueSortie — D-T12-8", () => {
     expect(masque.claims.sub).toBe("123");
   });
 
-  it("un IBAN, un email et un téléphone sont masqués dans le message, les details et un avertissement", () => {
+  it("un IBAN, un email et un téléphone sont masqués dans le message, l'action et les details d'une erreur", () => {
     const erreur = {
       code: "INVALID_ARGUMENT",
       message: "Compte FR7630006000011234567890189 invalide pour contact@exemple.fr au 0601020304.",
@@ -48,6 +48,19 @@ describe("appliquerPolitiqueSortie — D-T12-8", () => {
     expect(masque.message).toContain("[masqué]");
     expect(masque.action).toContain("[masqué]");
     expect(masque.details.valeur).toBe("[masqué]");
+  });
+
+  it("un IBAN, un email et un téléphone cités dans meta.avertissements d'une enveloppe sont masqués", () => {
+    const enveloppe = {
+      dossier: "d1",
+      resultats: [{ id: "1" }],
+      pagination: null,
+      meta: {
+        avertissements: ["Compte FR7630006000011234567890189 ignoré pour contact@exemple.fr au 0601020304."],
+      },
+    };
+    const masque = appliquerPolitiqueSortie(enveloppe, REDACT) as typeof enveloppe;
+    expect(masque.meta.avertissements).toEqual(["Compte [masqué] ignoré pour [masqué] au [masqué]."]);
   });
 
   it("hors mode PII, rien n'est masqué", () => {
