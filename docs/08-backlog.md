@@ -141,7 +141,7 @@ T04–T08 demandent une revue attentive même si le code est confié à un agent
 
 **Acceptation :** client SDK réel avec transport mémoire puis stdio : initialize, tools/list, tools/call, resources/list/read ; structuredContent identique au texte JSON ; erreurs avec isError ; entrée incorrecte/capacité absente sans réseau ; deux sessions ne partagent pas dossier actif ; masquage sur outils/ressources/claims/erreurs/cache, brut interdit en mode PII. **Hors périmètre :** prompts et catalogue futur exposé à vide.
 
-**État : livré** (T12-1 [#21](https://github.com/GoulvenF/ebp-mcp/pull/21), T12-2 [#22](https://github.com/GoulvenF/ebp-mcp/pull/22), T12-3 mergés). Le CLI (`serve --mock`, binaire) reste à T13.
+**État : livré** (T12-1 [#21](https://github.com/GoulvenF/ebp-mcp/pull/21), T12-2 [#22](https://github.com/GoulvenF/ebp-mcp/pull/22), T12-3 [#23](https://github.com/GoulvenF/ebp-mcp/pull/23)). Le CLI (`serve --mock`, binaire) reste à T13.
 
 ## T13 — CLI et parcours hors ligne
 
