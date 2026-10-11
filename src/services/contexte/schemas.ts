@@ -76,7 +76,10 @@ export const QuotaGroupeStatutSchema = z
   })
   .strict();
 
-export const ClaimsIdTokenSchema = z.object({ email: z.string().optional(), nom: z.string().optional() }).strict();
+/** `email` nullable (D-T12-13) : la politique PII masque `email` à `null` à toute profondeur, y compris ici. */
+export const ClaimsIdTokenSchema = z
+  .object({ email: z.string().nullable().optional(), nom: z.string().optional() })
+  .strict();
 
 export const DiagnosticAuthSchema = z
   .object({

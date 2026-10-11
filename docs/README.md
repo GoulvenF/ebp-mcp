@@ -28,6 +28,10 @@ Transfert terminé : [index Paperclip](paperclip-index.md), 24 tâches dont T01�
 
 Les décisions D01–D08 et les contrats de 07 sont désormais applicables. D09 ([10](10-socle-versions.md)) fige les versions du socle et la bibliothèque décimale au titre de T01, sans modifier 07. Les preuves fournisseur et compléments de spécification des tâches ultérieures restent à obtenir. Les corrections factuelles et renvois dans les documents initiaux évitent de reproduire les erreurs identifiées.
 
+## Utiliser le serveur en bibliothèque
+
+T12 livré : `creerFabriqueServeur(depsProcessus, options)` (`src/mcp/index.ts`) rend une fabrique ; chaque appel crée un `Server` MCP avec sa propre session (dossier actif, curseurs). `options.mode` (`"mock" | "live"`) est obligatoire, sans défaut. `depsProcessus` injecte tout ce que le serveur ne construit jamais lui-même : `config`, `http` (transport, quota, hookToken), `cache`, `clock`, `tokenStore`, `journal` (stderr). `demarrerStdio(fabrique)` connecte un `StdioServerTransport` au `Server` produit. Le binaire et `serve --mock` sur fixtures restent à T13 (08).
+
 ## Traçabilité
 
 Chaque tâche référence son Txx, les sections normatives, les Axx/Dxx pertinents et le commit du corpus. Chaque mapping non trivial référence une fixture et sa provenance ; chaque inconnue fournisseur est suivie par un Exx. Une évolution du contrat exige un commit et l'actualisation des tâches dépendantes. Ne jamais publier de preuves contenant des données client ou des identifiants d'accès.
