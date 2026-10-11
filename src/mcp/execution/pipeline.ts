@@ -165,7 +165,7 @@ export async function executerOutilMetier(
       entree.dossier !== undefined ? { dossier: entree.dossier } : {},
     );
 
-    // 5 à 8. Pipeline commun (D-T12-4) : `ExecutionContext`, `ContexteHttp`, appel du **seul**
+    // 5 à 8. Pipeline commun (D-T12-3, T12-4) : `ExecutionContext`, `ContexteHttp`, appel du **seul**
     // service du registre correspondant à cet outil, enveloppe, politique de sortie, validation
     // du schéma de sortie et plafonds.
     const enveloppeFinale = await executerServiceDossier(

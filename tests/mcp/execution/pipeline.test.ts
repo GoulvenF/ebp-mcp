@@ -155,7 +155,7 @@ describe("executerOutilMetier — pipeline D-T12-3", () => {
     }
   });
 
-  it("une ressource de dossier consomme le même budget et la même deadline qu'un outil, via l'aide commune `executerServiceDossier` (D-T12-4)", async () => {
+  it("une ressource de dossier consomme le même budget et la même deadline qu'un outil, via l'aide commune `executerServiceDossier` (D-T12-3, T12-4)", async () => {
     const deps = creerDepsProcessusTest([]);
     let contexteOutil: ExecutionContext | undefined;
     const original = REGISTRE_SERVICES.exercices;
