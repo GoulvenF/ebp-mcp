@@ -27,6 +27,7 @@ const deps: DepsCli = {
   stdout: process.stdout,
   stderr: process.stderr,
   signal: controleur.signal,
+  forcerSortie: (code: number) => process.exit(code),
 };
 
 executerCli(process.argv.slice(2), deps).then(

@@ -9,6 +9,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import {
   CLI_DIST,
   GARDE_RESEAU,
+  attendrePortEnEcoute,
   creerRepertoireCliTemp,
   ecrireConfigSynthetique,
   executerCliEtAttendre,
@@ -455,12 +456,11 @@ describe("ebp-mcp — 11. SIGTERM pendant login (live, --no-browser)", () => {
     enfant.stderr.on("data", (d: Buffer) => (stderrTexte += d.toString("utf8")));
 
     try {
-      const limite = Date.now() + 5000;
-      while (stderrTexte.length === 0 && Date.now() < limite) {
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
+      // Sonde par connexion (pas par `bind`, qui pourrait voler le port à l'enfant pendant son
+      // propre `listen` et le faire sortir en `CONFIG_INVALID` — revue PR #27).
+      const enEcoute = await attendrePortEnEcoute(port, 5000);
+      expect(enEcoute).toBe(true);
       expect(stderrTexte).toContain("http");
-      expect(await portEstLibre(port)).toBe(false);
     } finally {
       enfant.kill("SIGTERM");
     }

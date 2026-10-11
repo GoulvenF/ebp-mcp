@@ -19,7 +19,9 @@ const DEADLINE_FERMETURE_MS = 5000;
  *
  * `serveur.close()` lui-même n'a pas de borne : au-delà de `DEADLINE_FERMETURE_MS`, on journalise
  * sur stderr et on sort en code `1` plutôt que d'attendre indéfiniment une fermeture qui ne vient
- * jamais.
+ * jamais. Ce dépassement signifie justement que des handles restent ouverts (c'est ce qui bloque
+ * `serveur.close()`) : `deps.forcerSortie` appelle `process.exit` pour garantir la sortie, un
+ * simple `process.exitCode` ne suffirait pas à faire sortir le processus.
  */
 export async function executerServe(options: OptionsCliCommunes, deps: DepsCli): Promise<number> {
   const ctx = await composerContexteCli(options, { env: deps.env, home: deps.home });
@@ -38,7 +40,7 @@ export async function executerServe(options: OptionsCliCommunes, deps: DepsCli):
 
   if (!fermetureDansLesTemps) {
     deps.stderr.write(`Arrêt forcé : la fermeture du serveur a dépassé ${DEADLINE_FERMETURE_MS} ms.\n`);
-    return 1;
+    deps.forcerSortie(1);
   }
   return 0;
 }

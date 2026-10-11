@@ -3,7 +3,7 @@
 // processus enfant `node --import <garde-reseau> dist/cli.js …` (D-T13-13).
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { createServer } from "node:net";
+import { connect, createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -32,6 +32,33 @@ export async function portEstLibre(port: number): Promise<boolean> {
     serveur.once("error", () => resolve(false));
     serveur.listen(port, "127.0.0.1", () => serveur.close(() => resolve(true)));
   });
+}
+
+/**
+ * `true` si une connexion TCP vers ce port loopback réussit (preuve qu'un `listen` est actif).
+ * Volontairement une sonde par connexion, pas par `bind` : un `bind` répété pourrait voler le
+ * port au processus enfant pendant qu'il tente son propre `listen`, qui sortirait alors en
+ * `CONFIG_INVALID` au lieu d'ouvrir son callback (revue PR #27).
+ */
+export async function portEnEcoute(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = connect({ host: "127.0.0.1", port });
+    socket.once("connect", () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once("error", () => resolve(false));
+  });
+}
+
+/** Attend, avec une borne de temps, qu'une connexion vers ce port loopback réussisse. */
+export async function attendrePortEnEcoute(port: number, delaiMaxMs: number): Promise<boolean> {
+  const limite = Date.now() + delaiMaxMs;
+  do {
+    if (await portEnEcoute(port)) return true;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  } while (Date.now() < limite);
+  return false;
 }
 
 export interface RepertoireCliTemp {
