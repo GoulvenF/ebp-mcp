@@ -1,0 +1,99 @@
+import { describe, expect, it } from "vitest";
+import { appliquerPolitiqueSortie } from "../../../dist/index.js";
+
+const REDACT = { redactPii: true };
+const NORMAL = { redactPii: false };
+
+describe("appliquerPolitiqueSortie — D-T12-8", () => {
+  it("email, telephone et compte_bancaire passent à null à toute profondeur, avec un avertissement unique aux chemins généralisés", () => {
+    const enveloppe = {
+      dossier: "d1",
+      resultats: [
+        { id: "1", email: "a@exemple.fr", telephone: "0601020304" },
+        { id: "2", email: "b@exemple.fr", telephone: null },
+      ],
+      pagination: null,
+      meta: { avertissements: [] as string[] },
+      bruts: [{ compte_bancaire: "FR7630006000011234567890189" }],
+    };
+    const masque = appliquerPolitiqueSortie(enveloppe, REDACT) as typeof enveloppe;
+    expect(masque.resultats[0]?.email).toBeNull();
+    expect(masque.resultats[0]?.telephone).toBeNull();
+    expect(masque.resultats[1]?.telephone).toBeNull();
+    expect(masque.bruts[0]?.compte_bancaire).toBeNull();
+    expect(masque.meta.avertissements).toHaveLength(1);
+    expect(masque.meta.avertissements[0]).toContain("resultats[].email");
+    expect(masque.meta.avertissements[0]).toContain("resultats[].telephone");
+    expect(masque.meta.avertissements[0]).toContain("bruts[].compte_bancaire");
+  });
+
+  it("claims.email est masqué (outils de contexte, ex. ebp_statut)", () => {
+    const objet = { claims: { email: "qui@exemple.fr", sub: "123" }, autre: "valeur" };
+    const masque = appliquerPolitiqueSortie(objet, REDACT) as typeof objet;
+    expect(masque.claims.email).toBeNull();
+    expect(masque.claims.sub).toBe("123");
+  });
+
+  it("un IBAN, un email et un téléphone sont masqués dans le message, l'action et les details d'une erreur", () => {
+    const erreur = {
+      code: "INVALID_ARGUMENT",
+      message: "Compte FR7630006000011234567890189 invalide pour contact@exemple.fr au 0601020304.",
+      action: "Corriger la valeur FR7630006000011234567890189.",
+      details: { valeur: "FR7630006000011234567890189" },
+    };
+    const masque = appliquerPolitiqueSortie(erreur, REDACT);
+    expect(masque.message).not.toContain("FR7630006000011234567890189");
+    expect(masque.message).not.toContain("contact@exemple.fr");
+    expect(masque.message).not.toContain("0601020304");
+    expect(masque.message).toContain("[masqué]");
+    expect(masque.action).toContain("[masqué]");
+    expect(masque.details.valeur).toBe("[masqué]");
+  });
+
+  it("un IBAN, un email et un téléphone cités dans meta.avertissements d'une enveloppe sont masqués", () => {
+    const enveloppe = {
+      dossier: "d1",
+      resultats: [{ id: "1" }],
+      pagination: null,
+      meta: {
+        avertissements: ["Compte FR7630006000011234567890189 ignoré pour contact@exemple.fr au 0601020304."],
+      },
+    };
+    const masque = appliquerPolitiqueSortie(enveloppe, REDACT) as typeof enveloppe;
+    expect(masque.meta.avertissements).toEqual(["Compte [masqué] ignoré pour [masqué] au [masqué]."]);
+  });
+
+  it("hors mode PII, rien n'est masqué", () => {
+    const enveloppe = { resultats: [{ email: "a@exemple.fr" }], meta: { avertissements: [] as string[] } };
+    const inchange = appliquerPolitiqueSortie(enveloppe, NORMAL);
+    expect(inchange).toEqual(enveloppe);
+  });
+
+  it("réponse servie par le cache : masquée aussi (pas d'état particulier côté politique)", () => {
+    const depuisCache = { resultats: [{ email: "cache@exemple.fr" }], meta: { avertissements: [] as string[] } };
+    const masque = appliquerPolitiqueSortie(depuisCache, REDACT) as typeof depuisCache;
+    expect(masque.resultats[0]?.email).toBeNull();
+  });
+
+  it("un identifiant UUID contenant '-0412-3456-78' reste intact en mode PII (le masquage par motif ne vise pas les données)", () => {
+    const enveloppe = {
+      dossier: "d1",
+      resultats: [{ id: "3fa85f64-5717-0412-3456-7890abcdef12" }],
+      pagination: null,
+      meta: { avertissements: [] as string[] },
+    };
+    const masque = appliquerPolitiqueSortie(enveloppe, REDACT) as typeof enveloppe;
+    expect(masque.resultats[0]?.id).toBe("3fa85f64-5717-0412-3456-7890abcdef12");
+  });
+
+  it("un libelle EBP qui contient un email n'est pas modifié (limite documentée : seuls les textes du serveur sont masqués)", () => {
+    const enveloppe = {
+      dossier: "d1",
+      resultats: [{ libelle: "Contact préféré : contact@exemple.fr" }],
+      pagination: null,
+      meta: { avertissements: [] as string[] },
+    };
+    const masque = appliquerPolitiqueSortie(enveloppe, REDACT) as typeof enveloppe;
+    expect(masque.resultats[0]?.libelle).toBe("Contact préféré : contact@exemple.fr");
+  });
+});

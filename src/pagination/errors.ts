@@ -91,3 +91,13 @@ export function erreurScanAnnule(): ErreurPagination {
     { raison: "annule" },
   );
 }
+
+/** Un seul élément de liste dépasse déjà le plafond de taille à lui seul (D-T12-9, 07 §7). */
+export function erreurElementListeTropVolumineux(sourceId: string): ErreurPagination {
+  return creer(
+    "RESPONSE_TOO_LARGE",
+    "Un élément de la liste dépasse à lui seul le plafond de taille de sortie (1 Mio).",
+    "Réduire le périmètre de la demande ; cet élément ne peut pas être rendu seul.",
+    { source: sourceId },
+  );
+}

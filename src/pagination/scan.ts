@@ -7,7 +7,7 @@ import type { ExecutionContext } from "../ports/execution-context.js";
 import { CacheSource } from "./cache.js";
 import { MagasinCurseurs } from "./curseurs.js";
 import type { EtatCurseur } from "./curseurs.js";
-import { erreurLimiteInvalide, erreurScanAnnule } from "./errors.js";
+import { erreurElementListeTropVolumineux, erreurLimiteInvalide, erreurScanAnnule } from "./errors.js";
 import {
   budgetOuDeadlineEpuises,
   empreinteCanonique,
@@ -61,6 +61,13 @@ export interface OptionsScan<E, R> {
    * rejeté est marqué vu, n'est jamais rendu et n'est pas compté dans `pagination.total`.
    */
   readonly filtreApresEnrichissement?: (element: E) => boolean;
+  /**
+   * Mesure normalisée d'un résultat projeté, pour le plafond de taille (D-T12-9, extension
+   * additive) : défaut = taille JSON UTF-8 de `r`. Les services dont `R` embarque le brut passent
+   * une mesure qui l'exclut (ex. `e => taille(e.item)`), pour ne jamais compter le brut dans le
+   * plafond de la liste.
+   */
+  readonly tailleNormalisee?: (resultat: R) => number;
 }
 
 /** Sortie du moteur (07 §5) : jamais l'`Enveloppe` finale, aucune politique PII (T12). */
@@ -81,6 +88,17 @@ export interface DepsScan {
   readonly curseurs: MagasinCurseurs;
   readonly cache: CacheSource;
   readonly clock: Clock;
+  /**
+   * Plafond d'octets des résultats **filtrés** d'un appel de liste (D-T12-9, extension additive) :
+   * mesuré sur les résultats projetés (`R`), jamais sur le brut. Comportement inchangé si absent
+   * (aucun des tests existants de `scanner` ne le définit).
+   */
+  readonly plafondOctetsResultats?: number;
+}
+
+/** Taille JSON UTF-8 par défaut d'un résultat, pour le plafond de taille (D-T12-9). */
+function tailleJsonUtf8Defaut(valeur: unknown): number {
+  return Buffer.byteLength(JSON.stringify(valeur) ?? "null", "utf8");
 }
 
 /** Empreinte des seuls filtres/tri/projection, partagée entre le curseur et la clé de cache. */
@@ -162,6 +180,10 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
   let raisonArret: RaisonArret = null;
   let approximatif = false;
   let interrompu = false;
+  let plafondCoupe = false;
+  const plafondOctets = deps.plafondOctetsResultats;
+  const mesurer = options.tailleNormalisee ?? tailleJsonUtf8Defaut;
+  let octetsAccumules = 0;
 
   function marquerArretPartiel(raison: "budget" | "quota" | "deadline" | "source_incomplete", libelle: string): void {
     raisonArret = raison;
@@ -171,7 +193,7 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
   }
 
   async function drainerBuffer(): Promise<void> {
-    while (etat.elementsEnAttente.length > 0 && resultats.length < limite && !interrompu) {
+    while (etat.elementsEnAttente.length > 0 && resultats.length < limite && !interrompu && !plafondCoupe) {
       if (budget.signal?.aborted === true) {
         throw erreurScanAnnule();
       }
@@ -198,14 +220,31 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
         throw erreur;
       }
 
-      etat.elementsEnAttente.shift();
       if (options.filtreApresEnrichissement !== undefined && !options.filtreApresEnrichissement(enrichi)) {
         // D-T11-8 : rejeté après enrichissement — marqué vu, jamais rendu, jamais recompté.
+        etat.elementsEnAttente.shift();
         etat.idsVus.add(source.idElement(element));
         etat.totalFiltreAccumule -= 1;
         continue;
       }
-      resultats.push(projeter(enrichi));
+
+      const projete = projeter(enrichi);
+      if (plafondOctets !== undefined) {
+        const tailleElement = mesurer(projete);
+        if (resultats.length === 0 && tailleElement > plafondOctets) {
+          // D-T12-9 : un seul élément de liste dépasse déjà le plafond à lui seul.
+          throw erreurElementListeTropVolumineux(source.id);
+        }
+        if (octetsAccumules + tailleElement > plafondOctets) {
+          // D-T12-9 : s'arrête avant cet élément, qui reste dans `elementsEnAttente` du curseur.
+          plafondCoupe = true;
+          break;
+        }
+        octetsAccumules += tailleElement;
+      }
+
+      etat.elementsEnAttente.shift();
+      resultats.push(projete);
       etat.idsVus.add(source.idElement(element));
     }
   }
@@ -213,7 +252,7 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
   try {
     await drainerBuffer();
 
-    while (resultats.length < limite && !etat.sourceTerminee && !interrompu) {
+    while (resultats.length < limite && !etat.sourceTerminee && !interrompu && !plafondCoupe) {
       const positionDemandee = etat.position;
       const resultatPage = await lirePageGardee(
         deps,
@@ -266,7 +305,7 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
 
       await drainerBuffer();
 
-      if (!interrompu && page.sourceIncomplete === true) {
+      if (!interrompu && !plafondCoupe && page.sourceIncomplete === true) {
         marquerArretPartiel("source_incomplete", "La source a déclaré une limitation intrinsèque pour cette page.");
       }
     }
@@ -275,6 +314,12 @@ export async function scanner<E, R = E>(deps: DepsScan, options: OptionsScan<E, 
     let completude: Completude;
     if (interrompu) {
       completude = "partielle";
+    } else if (plafondCoupe) {
+      // D-T12-9 : coupure par plafond de taille, distincte d'une coupure par `limite` : jamais de
+      // `raison_arret` ni d'`approximatif`, mais un avertissement explicite dédié.
+      completude = "page";
+      raisonArret = null;
+      avertissements.push(`liste coupée à ${resultats.length} résultats : plafond 1 Mio ; reprendre avec le curseur.`);
     } else if (hasMore) {
       completude = "page";
       raisonArret = "limite";

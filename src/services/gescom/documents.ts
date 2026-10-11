@@ -171,6 +171,8 @@ export async function listerDocumentsVenteService(
     ...(enrichir !== undefined ? { enrichir } : {}),
     ...(filtreApresEnrichissement !== undefined ? { filtreApresEnrichissement } : {}),
     projeter,
+    // D-T12-9 : mesure le seul `objet` mappé, jamais `source` (le brut n'entre pas dans le plafond).
+    tailleNormalisee: (r) => Buffer.byteLength(JSON.stringify(r.objet) ?? "null", "utf8"),
     ...(entree.curseur !== undefined ? { curseur: entree.curseur } : {}),
   });
 
