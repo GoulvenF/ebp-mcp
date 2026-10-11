@@ -27,8 +27,8 @@ export async function listerEcritures(
   ctx: ContexteService,
   entreeBrute: unknown,
 ): Promise<ResultatService<LigneEcritureListe>> {
-  exigerFamilleOutil("lister_ecritures", ctx);
   const entree = validerEntree(ListerEcrituresEntreeSchema, entreeBrute, "lister_ecritures");
+  exigerFamilleOutil("lister_ecritures", ctx);
   verifierCapacitesEntree("lister_ecritures", ctx.dossier.famille, entree);
 
   const budget = creerBudget(ctx.execution);

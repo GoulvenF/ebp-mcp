@@ -41,6 +41,14 @@ describe("detail_ecriture (D-T11-16)", () => {
     expect(deps.transport.appels).toHaveLength(0);
   });
 
+  it("dossier GC + entrée invalide ⇒ INVALID_ARGUMENT (schéma avant famille, 07 §4), 0 appel transport", async () => {
+    const deps = depsDe([]);
+    await expect(detailEcriture(deps, ctxGcDe(), { id: "x" })).rejects.toMatchObject({
+      erreur: { code: "INVALID_ARGUMENT" },
+    });
+    expect(deps.transport.appels).toHaveLength(0);
+  });
+
   it("UUID validé ⇒ lecture directe `/entries/{uuid}`, 1 appel", async () => {
     const deps = depsDe([{ status: 200, corps: ENTRY_DETAIL }]);
     const resultat = await detailEcriture(deps, ctxDe(), { id: UUID });

@@ -23,17 +23,17 @@ const SOURCE_TIERS = "hubbix-compta:/auxiliary-accounts";
  *  - GC + `id` : lecture directe `/customers/{id}` ;
  *  - GC + `code` : déjà refusé avant réseau par `verifierCapacitesEntree` (D-T11-6), jamais atteint
  *    ici.
- * `inclure_brut` sur la branche GC reste `null` : `lireClient` (adapter GesCom, hors périmètre
- * d'extension additive de ce lot) n'expose aucun élément source brut aligné — limite documentée
- * plutôt que contournée en silence.
+ * `inclure_brut` sur la branche GC reste `null`, avec un avertissement explicite si `true` était
+ * demandé : `lireClient` (adapter GesCom, hors périmètre d'extension additive de ce lot) n'expose
+ * aucun élément source brut aligné — limite documentée plutôt que contournée en silence.
  */
 export async function ficheTiers(
   deps: DepsService,
   ctx: ContexteService,
   entreeBrute: unknown,
 ): Promise<ResultatService<Tiers | ClientGc>> {
-  exigerFamilleOutil("fiche_tiers", ctx);
   const entree = validerEntree(FicheTiersEntreeSchema, entreeBrute, "fiche_tiers");
+  exigerFamilleOutil("fiche_tiers", ctx);
   verifierCapacitesEntree("fiche_tiers", ctx.dossier.famille, entree);
 
   const budget = creerBudget(ctx.execution);
@@ -51,7 +51,9 @@ export async function ficheTiers(
       completude: "complete",
       raison_arret: null,
       approximatif: false,
-      avertissements: [],
+      avertissements: entree.inclure_brut
+        ? ["élément source brut non disponible pour cette famille dans cette version."]
+        : [],
       sources: ["hubbix-gescom:/customers/{id}"],
       appels_source: 1,
       tentatives: budgetInitial - budget.restant,

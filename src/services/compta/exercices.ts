@@ -19,8 +19,8 @@ export async function exercices(
   ctx: ContexteService,
   entreeBrute: unknown,
 ): Promise<ResultatService<{ exercices: Exercice[] }>> {
-  exigerFamilleOutil("exercices", ctx);
   const entree = validerEntree(ExercicesEntreeSchema, entreeBrute, "exercices");
+  exigerFamilleOutil("exercices", ctx);
   verifierCapacitesEntree("exercices", ctx.dossier.famille, entree);
 
   const budget = creerBudget(ctx.execution);

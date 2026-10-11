@@ -12,8 +12,8 @@ export async function detailEcriture(
   ctx: ContexteService,
   entreeBrute: unknown,
 ): Promise<ResultatService<Ecriture>> {
-  exigerFamilleOutil("detail_ecriture", ctx);
   const entree = validerEntree(DetailEcritureEntreeSchema, entreeBrute, "detail_ecriture");
+  exigerFamilleOutil("detail_ecriture", ctx);
   verifierCapacitesEntree("detail_ecriture", ctx.dossier.famille, entree);
 
   const budget = creerBudget(ctx.execution);

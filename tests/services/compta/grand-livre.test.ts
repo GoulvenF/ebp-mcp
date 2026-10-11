@@ -57,6 +57,30 @@ describe("grand_livre (D-T11-13)", () => {
     expect(resultat.avertissements.some((a) => a.includes("date absente"))).toBe(true);
   });
 
+  it("ligne hors [du, au] renvoyée par la source est écartée", async () => {
+    const deps = depsDe([
+      {
+        status: 200,
+        corps: {
+          linesEntries: [ligne({ entry: { journal: "VE", date: "2026-04-15", entryMode: "Validé" } })],
+          take: 50,
+          skip: 0,
+        },
+      },
+    ]);
+    const resultat = await grandLivre(deps, ctxDe(), { compte: "411000", du: "2026-03-01", au: "2026-03-31" });
+    expect(resultat.resultats).toHaveLength(0);
+  });
+
+  it("ligne avec `compte_general: null` exclue avec avertissement", async () => {
+    const deps = depsDe([
+      { status: 200, corps: { linesEntries: [ligne({ generalAccount: null })], take: 50, skip: 0 } },
+    ]);
+    const resultat = await grandLivre(deps, ctxDe(), { compte: "411000", du: "2026-03-01", au: "2026-03-31" });
+    expect(resultat.resultats).toHaveLength(0);
+    expect(resultat.avertissements.some((a) => a.includes("compte_general absent"))).toBe(true);
+  });
+
   it("liste paginée (pas un agrégat) : `pagination` non nulle", async () => {
     const deps = depsDe([{ status: 200, corps: { linesEntries: [ligne()], take: 50, skip: 0 } }]);
     const resultat = await grandLivre(deps, ctxDe(), { compte: "411000", du: "2026-03-01", au: "2026-03-31" });

@@ -27,8 +27,8 @@ export async function transactionsBancaires(
   ctx: ContexteService,
   entreeBrute: unknown,
 ): Promise<ResultatService<TransactionBancaire>> {
-  exigerFamilleOutil("transactions_bancaires", ctx);
   const entree = validerEntree(TransactionsBancairesEntreeSchema, entreeBrute, "transactions_bancaires");
+  exigerFamilleOutil("transactions_bancaires", ctx);
   verifierCapacitesEntree("transactions_bancaires", ctx.dossier.famille, entree);
 
   const budget = creerBudget(ctx.execution);

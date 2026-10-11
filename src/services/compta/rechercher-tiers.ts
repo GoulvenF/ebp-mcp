@@ -25,8 +25,8 @@ export async function rechercherTiers(
   ctx: ContexteService,
   entreeBrute: unknown,
 ): Promise<ResultatService<Tiers>> {
-  exigerFamilleOutil("rechercher_tiers", ctx);
   const entree = validerEntree(RechercherTiersEntreeSchema, entreeBrute, "rechercher_tiers");
+  exigerFamilleOutil("rechercher_tiers", ctx);
   verifierCapacitesEntree("rechercher_tiers", ctx.dossier.famille, entree);
 
   const budget = creerBudget(ctx.execution);

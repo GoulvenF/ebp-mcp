@@ -1,5 +1,6 @@
 import type { LigneEcritureListe } from "../../adapters/compta/ecritures.js";
 import { listerLignesEcriture } from "../../adapters/compta/ecritures.js";
+import { joursCivilsEntre } from "../../domain/date.js";
 import type { LigneGrandLivreSchema } from "../../domain/schemas/compta.js";
 import { creerBudget } from "../../http/budget.js";
 import type { IdentiteScan } from "../../pagination/scan.js";
@@ -17,19 +18,19 @@ type LigneGrandLivre = z.infer<typeof LigneGrandLivreSchema>;
 const SOURCE_ID = "hubbix-compta:/lines-entries";
 
 /**
- * `grand_livre` (D-T11-13) : `/lines-entries` avec `generalAccount` ; revérification EXACTE locale
- * de `compte_general === compte`. Liste paginée normale (`limite`/`curseur`), **aucun cumul ni
- * solde progressif** : chaque ligne reste indépendante, pas de solde d'ouverture implicite.
- * `date` est requise par `LigneGrandLivreSchema` : une ligne à `date: null` est exclue et comptée,
- * avec avertissement explicite.
+ * `grand_livre` (D-T11-13, D-T11-5) : `/lines-entries` avec `generalAccount`/`startDate`/`endDate` ;
+ * revérification EXACTE locale de `compte_general === compte` et de `date` dans `[du, au]`. Liste
+ * paginée normale (`limite`/`curseur`), **aucun cumul ni solde progressif** : chaque ligne reste
+ * indépendante, pas de solde d'ouverture implicite. `compte_general: null` (D-T11-5) et
+ * `date: null` sont chacun exclus, comptés et signalés par avertissement, jamais silencieux.
  */
 export async function grandLivre(
   deps: DepsService,
   ctx: ContexteService,
   entreeBrute: unknown,
 ): Promise<ResultatService<LigneGrandLivre>> {
-  exigerFamilleOutil("grand_livre", ctx);
   const entree = validerEntree(GrandLivreEntreeSchema, entreeBrute, "grand_livre");
+  exigerFamilleOutil("grand_livre", ctx);
   verifierCapacitesEntree("grand_livre", ctx.dossier.famille, entree);
 
   const budget = creerBudget(ctx.execution);
@@ -52,17 +53,27 @@ export async function grandLivre(
       }),
   });
 
+  let exclusCompteGeneralAbsent = 0;
   let exclusDateAbsente = 0;
 
   const filtre = (enveloppe: ElementEnveloppe<LigneEcritureListe>): boolean => {
     const ligne = enveloppe.item;
+    if (ligne.compte_general === null) {
+      // D-T11-5 : champ revérifié absent ⇒ exclu, compté, signalé (jamais silencieux).
+      exclusCompteGeneralAbsent += 1;
+      return false;
+    }
     if (ligne.compte_general !== entree.compte) {
-      // Revérification exacte (D-T11-13) : comprend aussi le cas `null`, jamais rendu malgré le
-      // filtre serveur `generalAccount`.
+      // Revérification exacte (D-T11-13).
       return false;
     }
     if (ligne.date === null) {
       exclusDateAbsente += 1;
+      return false;
+    }
+    if (joursCivilsEntre(entree.du, ligne.date) < 0 || joursCivilsEntre(ligne.date, entree.au) < 0) {
+      // Revérification locale dans [du, au] (D-T11-5) : le filtre serveur `startDate`/`endDate`
+      // n'est jamais la seule garantie.
       return false;
     }
     return true;
@@ -105,6 +116,11 @@ export async function grandLivre(
   });
 
   const avertissementsRevalidation: string[] = [];
+  if (exclusCompteGeneralAbsent > 0) {
+    avertissementsRevalidation.push(
+      `${exclusCompteGeneralAbsent} ligne(s) exclue(s) : compte_general absent pour la revérification locale.`,
+    );
+  }
   if (exclusDateAbsente > 0) {
     avertissementsRevalidation.push(
       `${exclusDateAbsente} ligne(s) exclue(s) : date absente pour la revérification locale.`,

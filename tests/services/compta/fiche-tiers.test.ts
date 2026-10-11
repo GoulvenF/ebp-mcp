@@ -111,4 +111,27 @@ describe("fiche_tiers (D-T11-15)", () => {
     expect(deps.transport.appels[0]!.url).toContain("/customers/cli-042");
     expect(resultat.resultats[0]).toMatchObject({ code: "CLI042" });
   });
+
+  it("GC + `id` + `inclure_brut: true` ⇒ `bruts: null` avec avertissement explicite (D-T11-14)", async () => {
+    const deps = depsDe([
+      {
+        status: 200,
+        corps: {
+          code: "CLI042",
+          name: "Atelier Dupont",
+          siret: null,
+          intracommunityVatNumber: null,
+          customerGroupId: "grp-1",
+          settlementTermId: "cond-30j",
+          balanceDue: "1287.50",
+          pastDueBalance: "430.00",
+        },
+      },
+    ]);
+    const resultat = await ficheTiers(deps, ctxGcDe(), { id: "cli-042", inclure_brut: true });
+    expect(resultat.bruts).toBeNull();
+    expect(
+      resultat.avertissements.some((a) => a.includes("élément source brut non disponible")),
+    ).toBe(true);
+  });
 });
