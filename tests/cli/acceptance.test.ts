@@ -21,6 +21,7 @@ import {
 
 /** Même port de démo que `examples/config.demo.json` : aucun GUID réel, synthétique (07 §2). */
 const GUID_DEMO_CPT = "11111111-1111-4111-8111-111111111111";
+const GUID_DEMO_GC = "22222222-2222-4222-8222-222222222222";
 const GUID_INCONNU = "99999999-0000-0000-0000-000000000000";
 
 async function lireTentativesGarde(chemin: string): Promise<string[]> {
@@ -84,16 +85,18 @@ describe("ebp-mcp — 1. aide et usage", () => {
     }
   });
 
-  it("une commande inconnue donne le code 2 sur stderr", async () => {
+  it("une commande inconnue donne le code 2 sur stderr, avec une aide courte", async () => {
     const r = await executerCliEtAttendre({ rep, argv: ["bogus"] });
     expect(r.code).toBe(2);
     expect(r.stderr).toContain("INVALID_ARGUMENT");
+    expect(r.stderr).toContain("ebp-mcp --help");
   });
 
-  it("une option inconnue donne le code 2 sur stderr", async () => {
+  it("une option inconnue donne le code 2 sur stderr, avec une aide courte", async () => {
     const r = await executerCliEtAttendre({ rep, argv: ["status", "--option-inconnue"] });
     expect(r.code).toBe(2);
     expect(r.stderr).toContain("INVALID_ARGUMENT");
+    expect(r.stderr).toContain("ebp-mcp --help");
   });
 });
 
@@ -126,7 +129,7 @@ describe("ebp-mcp — 2. démarrage sans token (PROFIL_DEMO via --mock, aucun co
       expect(statutOutil.isError).toBe(false);
       expect((statutOutil.structuredContent as { meta: { mode: string } }).meta.mode).toBe("mock");
 
-      // `demo-cpt` vient du profil de démo intégré (`PROFIL_DEMO`, D-T13-12) : aucun `config.json`
+      // `demo-cpt` vient du profil de démo intégré (`PROFIL_DEMO`, D-T13-4) : aucun `config.json`
       // n'existe sur disque dans ce test, donc la résolution du dossier aboutit avant le contrôle
       // d'authentification, qui rend ensuite `AUTH_REQUIRED` (aucun token, D-T12-3).
       const appelMetier = await client.callTool({
@@ -142,7 +145,7 @@ describe("ebp-mcp — 2. démarrage sans token (PROFIL_DEMO via --mock, aucun co
   });
 });
 
-describe("ebp-mcp — parcours hors ligne complet (points 3 à 9, une seule session, D-T13-9 à D-T13-13)", () => {
+describe("ebp-mcp — parcours hors ligne complet (points 3 à 9, une seule session, D-T13-10 à D-T13-13)", () => {
   let rep: RepertoireCliTemp;
   let gardeFichier: string;
 
@@ -388,6 +391,22 @@ describe("ebp-mcp — 10. SIGTERM pendant serve (appel bloqué sur une attente d
 
     await client.connect(transport);
 
+    // Accès au processus enfant réel sous-jacent au transport SDK : le SDK ne consomme que les
+    // trames JSON-RPC qu'il reconnaît et n'expose ni le code de sortie du processus ni ses octets
+    // stdout bruts. Un second listener `data` sur le même flux (en mode flowing) reçoit les mêmes
+    // chunks que celui du SDK, sans lui retirer quoi que ce soit — c'est la seule façon de vérifier
+    // à la fois le code de sortie réel et l'absence de toute ligne de stdout hors JSON-RPC.
+    const processusEnfant = (transport as unknown as { _process: NodeJS.Process & { stdout: NodeJS.ReadableStream } })
+      ._process;
+    let stdoutBrut = "";
+    processusEnfant.stdout.on("data", (d: Buffer) => (stdoutBrut += d.toString("utf8")));
+
+    const sortieProcessus = new Promise<number | null>((resolve) => {
+      (processusEnfant as unknown as { on: (event: string, cb: (code: number | null) => void) => void }).on(
+        "exit",
+        resolve,
+      );
+    });
     const sortie = new Promise<void>((resolve) => {
       // `client.onclose` (pas `transport.onclose`, que le SDK enveloppe déjà pendant `connect()`
       // pour rejeter les requêtes en attente avant d'appeler ce hook) : l'écraser après `connect()`
@@ -407,8 +426,12 @@ describe("ebp-mcp — 10. SIGTERM pendant serve (appel bloqué sur une attente d
     const debut = Date.now();
     process.kill(pid!, "SIGTERM");
 
-    await Promise.all([appelBloque, sortie]);
+    const [, , codeSortie] = await Promise.all([appelBloque, sortie, sortieProcessus]);
     expect(Date.now() - debut).toBeLessThan(5000);
+    expect(codeSortie).toBe(0);
+    for (const ligne of stdoutBrut.split("\n").filter((l) => l.length > 0)) {
+      expect(() => JSON.parse(ligne)).not.toThrow();
+    }
   }, 10_000);
 });
 
@@ -447,6 +470,58 @@ describe("ebp-mcp — 11. SIGTERM pendant login (live, --no-browser)", () => {
     await expect(stat(`${rep.xdgConfigHome}/ebp-mcp/auth`)).rejects.toMatchObject({ code: "ENOENT" });
     expect(await portEstLibre(port)).toBe(true);
   }, 10_000);
+});
+
+describe("ebp-mcp — horloge réelle : pas de minuteur unref (D-T13-12)", () => {
+  let rep: RepertoireCliTemp;
+
+  beforeEach(async () => {
+    rep = await creerRepertoireCliTemp();
+    await ecrireConfigSynthetique(rep, {
+      redirectUri: `http://127.0.0.1:${await portLibre()}/callback`,
+      famillesActives: ["hubbix-compta", "hubbix-gescom"],
+      minIntervalMs: 2000,
+    });
+  });
+
+  afterEach(async () => {
+    await nettoyerRepertoireCliTemp(rep);
+  });
+
+  it("dossiers add bloqué par minIntervalMs persiste le dossier et ne sort en code 0 qu'après l'attente", async () => {
+    const connexion = await executerCliEtAttendre({ rep, argv: ["login", "--mock"] });
+    expect(connexion.code).toBe(0);
+
+    // Première réservation de départ sur le groupe de quota : passe immédiatement.
+    const premier = await executerCliEtAttendre({
+      rep,
+      argv: ["dossiers", "add", "--mock", "--famille", "hubbix-compta", "--id", GUID_DEMO_CPT, "--alias", "a"],
+    });
+    expect(premier.code).toBe(0);
+
+    // Deuxième réservation sur le même groupe de quota (partagé entre familles), dans la fenêtre
+    // `minIntervalMs` : `src/cli/horloge.ts` bloquait l'event loop ouverte via `signal` jusqu'à
+    // présent ; un `minuteur.unref()` laissait le processus sortir en code 0 avant la fin de
+    // l'attente et donc avant la persistance — repro minimale documentée par Lead Tech :
+    // `new Promise(r=>{const t=setTimeout(r,1000);t.unref()}).then(()=>console.log('done'))`
+    // n'affiche rien et sort en 0. Une autre famille (GUID distinct) évite un rejet local
+    // « id déjà déclaré » qui ne consommerait pas la réservation de départ attendue ici.
+    const avant = Date.now();
+    const second = await executerCliEtAttendre({
+      rep,
+      argv: ["dossiers", "add", "--mock", "--famille", "hubbix-gescom", "--id", GUID_DEMO_GC, "--alias", "b"],
+    });
+    const dureeMs = Date.now() - avant;
+    expect(second.code).toBe(0);
+    expect(dureeMs).toBeGreaterThanOrEqual(1800);
+
+    const config = JSON.parse(await readFile(rep.cheminConfig, "utf8")) as {
+      profiles: { default: { dossiers: { prod: { alias: string }[] } } };
+    };
+    expect(config.profiles.default.dossiers.prod.map((d) => d.alias)).toEqual(
+      expect.arrayContaining(["a", "b"]),
+    );
+  }, 15_000);
 });
 
 describe("ebp-mcp — 12. sans config.json ni --mock", () => {

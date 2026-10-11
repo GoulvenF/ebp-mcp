@@ -5,7 +5,7 @@ import { codeSortiePourErreur, ligneErreurCli } from "./cli/exit-codes.js";
 import type { DepsCli } from "./cli/types.js";
 
 /**
- * Seul endroit du binaire qui touche `process.*` (D-T13-9) : `src/cli/` ne reçoit que `DepsCli`.
+ * Seul endroit du binaire qui touche `process.*` (D-T13-1) : `src/cli/` ne reçoit que `DepsCli`.
  * SIGTERM, SIGINT et la fin de stdin abandonnent le même `AbortSignal` (D-T13-12) — `serve` s'en
  * sert pour s'arrêter proprement, `login` pour sortir en code 1 sans écrire de token ; les autres
  * commandes l'ignorent. Un seul listener `"end"` sur `stdin` : il ne force jamais le flux en mode

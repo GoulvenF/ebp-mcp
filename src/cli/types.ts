@@ -1,5 +1,5 @@
 /**
- * Dépendances du processus injectées par `src/cli.ts` (D-T13-9) : `executerCli` et tout le code
+ * Dépendances du processus injectées par `src/cli.ts` (D-T13-1) : `executerCli` et tout le code
  * sous `src/cli/` ne touchent jamais `process.*` directement, seulement via cet objet — le seul
  * câblage `process` autorisé vit dans `src/cli.ts`.
  */

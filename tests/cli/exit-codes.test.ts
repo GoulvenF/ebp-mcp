@@ -1,4 +1,4 @@
-// Table des codes de sortie (fiche T13-3, critère d'acceptation #1, D-T13-9) : un test par ligne
+// Table des codes de sortie (fiche T13-3, critère d'acceptation #1, D-T13-2) : un test par ligne
 // de `TABLE_CODES_SORTIE`, écrit à la main depuis 07 §12 — jamais recopié d'une exécution.
 import { describe, expect, it } from "vitest";
 import { CODES_ERREUR } from "../../dist/domain/errors.js";
@@ -13,7 +13,7 @@ function erreurDomaine(code: string): Error & { erreur: unknown } {
   return e;
 }
 
-describe("table des codes de sortie (07 §12, D-T13-9)", () => {
+describe("table des codes de sortie (07 §12, D-T13-2)", () => {
   it.each(CODES_ERREUR)("code domaine « %s »", (code) => {
     const attendu = CODE_3.has(code) ? 3 : CODES_2.has(code) ? 2 : 1;
     expect(codeSortiePourErreur(erreurDomaine(code))).toBe(attendu);

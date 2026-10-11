@@ -53,6 +53,9 @@ Gère les dossiers déclarés dans la configuration. \`add\` valide le dossier �
 l'enregistrer ; \`remove\` ne fait aucun appel réseau.
 `;
 
+/** Rappel court (D-T13-1) : ajouté sur stderr après `CODE : message` pour une erreur d'usage. */
+export const AIDE_COURTE_USAGE = "Consulter `ebp-mcp --help` (ou `ebp-mcp <commande> --help`).\n";
+
 export function aidePourCommande(commande: Commande): string {
   switch (commande) {
     case "serve":

@@ -1,8 +1,8 @@
 /**
- * `parseArgs` strict écrit à la main (T13-3, 07 §12, D-T13-8) : `node:util.parseArgs` est une API
- * native du runtime Node (`engines.node: ^24.0.0`), pas une dépendance npm — aucun paquet tiers
- * n'est ajouté par ce module. Toute commande/option inconnue ou argument manquant lève
- * {@link ErreurUsageCli} (code de sortie 2, D-T13-9), jamais une erreur Node brute non assainie.
+ * Parsing strict avec `node:util.parseArgs` (T13-3, 07 §12, D-T13-1) : API native du runtime Node
+ * (`engines.node: ^24.0.0`), pas une dépendance npm — aucun paquet tiers n'est ajouté par ce
+ * module. Toute commande/option inconnue ou argument manquant lève {@link ErreurUsageCli} (code
+ * de sortie 2, D-T13-2), jamais une erreur Node brute non assainie.
  */
 import { parseArgs } from "node:util";
 import type { ParseArgsOptionsConfig } from "node:util";
@@ -22,7 +22,7 @@ function estSousCommandeDossiers(valeur: string): valeur is SousCommandeDossiers
   return (SOUS_COMMANDES_DOSSIERS as readonly string[]).includes(valeur);
 }
 
-/** Première détection (D-T13-9) : `--help`/`--version` et le nom de commande, sans lever d'erreur sur une option inconnue. */
+/** Première détection (D-T13-1) : `--help`/`--version` et le nom de commande, sans lever d'erreur sur une option inconnue. */
 export interface DetectionPrealable {
   readonly aide: boolean;
   readonly version: boolean;
@@ -97,7 +97,7 @@ function validerEnv(valeur: string | undefined): "prod" | "preprod" | undefined 
 }
 
 /**
- * Analyse complète d'un `argv` (hors `node`/script) pour une commande déjà déterminée (D-T13-8) :
+ * Analyse complète d'un `argv` (hors `node`/script) pour une commande déjà déterminée (D-T13-1) :
  * lève {@link ErreurUsageCli} sur option inconnue, valeur manquante, ou positionnel inattendu.
  */
 export function analyserArgv(argv: readonly string[]): OptionsParsees {

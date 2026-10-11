@@ -1,7 +1,11 @@
 import { creerFabriqueServeur, demarrerStdio } from "../../mcp/serveur/fabrique.js";
 import { composerContexteCli } from "../composition.js";
 import type { OptionsCliCommunes } from "../composition.js";
+import { fermerAvecDelai } from "../fermeture.js";
 import type { DepsCli } from "../types.js";
+
+/** Délai maximal entre l'abandon du signal et la fermeture effective (D-T13-12, 07 §12). */
+const DEADLINE_FERMETURE_MS = 5000;
 
 /**
  * `ebp-mcp serve` (07 §12, D-T13-12) : attend l'abandon de `deps.signal` (câblé par `src/cli.ts`
@@ -12,6 +16,10 @@ import type { DepsCli } from "../types.js";
  * la résolution de leurs promesses) — un appel bloqué dans une attente de quota (`Clock.wait`
  * recevant ce `signal`) est donc débloqué sans attendre son issue. Aucune modification de
  * `src/mcp/serveur/` n'est nécessaire (premier branchement de D-T13-12).
+ *
+ * `serveur.close()` lui-même n'a pas de borne : au-delà de `DEADLINE_FERMETURE_MS`, on journalise
+ * sur stderr et on sort en code `1` plutôt que d'attendre indéfiniment une fermeture qui ne vient
+ * jamais.
  */
 export async function executerServe(options: OptionsCliCommunes, deps: DepsCli): Promise<number> {
   const ctx = await composerContexteCli(options, { env: deps.env, home: deps.home });
@@ -26,6 +34,11 @@ export async function executerServe(options: OptionsCliCommunes, deps: DepsCli):
     deps.signal.addEventListener("abort", () => resolve(), { once: true });
   });
 
-  await serveur.close();
+  const fermetureDansLesTemps = await fermerAvecDelai(() => serveur.close(), DEADLINE_FERMETURE_MS);
+
+  if (!fermetureDansLesTemps) {
+    deps.stderr.write(`Arrêt forcé : la fermeture du serveur a dépassé ${DEADLINE_FERMETURE_MS} ms.\n`);
+    return 1;
+  }
   return 0;
 }

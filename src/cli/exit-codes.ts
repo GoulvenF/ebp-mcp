@@ -1,7 +1,7 @@
 import { CODES_ERREUR, type CodeErreur, type ErreurMetier } from "../domain/errors.js";
 
 /**
- * Table normative des codes de sortie du binaire (T13-3, 07 §12, D-T13-9) : un seul endroit, testé
+ * Table normative des codes de sortie du binaire (T13-3, 07 §12, D-T13-2) : un seul endroit, testé
  * ligne par ligne par `tests/cli/exit-codes.test.ts`. `0` (succès) n'apparaît pas ici : cette table
  * ne couvre que la correspondance code d'erreur métier -> code de sortie non nul.
  *
@@ -30,7 +30,7 @@ function calculerCodeSortie(code: CodeErreur): 1 | 2 | 3 {
 const CODE_VERS_SORTIE = new Map<CodeErreur, 1 | 2 | 3>(TABLE_CODES_SORTIE.map((l) => [l.code, l.exitCode]));
 
 /**
- * Erreur d'usage CLI (D-T13-9) : commande/option inconnue, argument manquant. Jamais un des 19
+ * Erreur d'usage CLI (D-T13-2) : commande/option inconnue, argument manquant. Jamais un des 19
  * codes de `CODES_ERREUR` au sens strict, mais classée `INVALID_ARGUMENT` (code de sortie 2) pour
  * traverser la même table sans y ajouter de cas particulier.
  */
@@ -58,7 +58,7 @@ function estErreurDomaine(e: unknown): e is Error & { erreur: ErreurMetier } {
   );
 }
 
-/** Code de sortie du processus pour une exception donnée (D-T13-9) : jamais 0 (réservé au succès). */
+/** Code de sortie du processus pour une exception donnée (D-T13-2) : jamais 0 (réservé au succès). */
 export function codeSortiePourErreur(e: unknown): 1 | 2 | 3 {
   if (estErreurDomaine(e)) {
     return CODE_VERS_SORTIE.get(e.erreur.code) ?? 1;
@@ -67,7 +67,7 @@ export function codeSortiePourErreur(e: unknown): 1 | 2 | 3 {
 }
 
 /**
- * Ligne unique `CODE : message` écrite sur stderr (D-T13-9) : jamais de trace de pile, jamais le
+ * Ligne unique `CODE : message` écrite sur stderr (D-T13-2) : jamais de trace de pile, jamais le
  * message brut d'une exception non reconnue (qui pourrait contenir un détail interne), jamais de
  * secret — `ErreurMetier.message` est déjà assaini par construction dans tout le reste du code.
  */

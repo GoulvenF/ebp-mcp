@@ -6,7 +6,7 @@ import { creerOuvrirNavigateurManuel, creerOuvrirNavigateurSysteme } from "../na
 import type { DepsCli } from "../types.js";
 
 /** Budget généreux (callback jusqu'à 5 min + un seul échange de token, D-T13-11). */
-const DEADLINE_LOGIN_MS = 6 * 60 * 1000;
+const DEADLINE_LOGIN_MS = 5 * 60 * 1000;
 const BUDGET_LOGIN = 2;
 
 export interface OptionsLogin extends OptionsCliCommunes {
@@ -14,7 +14,7 @@ export interface OptionsLogin extends OptionsCliCommunes {
 }
 
 /**
- * En live, écrit l'URL d'autorisation sur stderr avant de tenter de l'ouvrir (D-T13-10) ; en mock,
+ * En live, écrit l'URL d'autorisation sur stderr avant de tenter de l'ouvrir (D-T13-11) ; en mock,
  * le consentement simulé (`creerConsentementMock`) ne passe jamais par ici.
  */
 function creerOuvrirNavigateurLive(deps: DepsCli, noBrowser: boolean): (url: string) => Promise<void> {

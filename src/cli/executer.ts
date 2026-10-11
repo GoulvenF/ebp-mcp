@@ -1,16 +1,16 @@
 import { VERSION } from "../version.js";
-import { AIDE_GLOBALE, aidePourCommande } from "./aide.js";
+import { AIDE_COURTE_USAGE, AIDE_GLOBALE, aidePourCommande } from "./aide.js";
 import { executerDossiers } from "./commandes/dossiers.js";
 import { executerLogin } from "./commandes/login.js";
 import { executerLogout } from "./commandes/logout.js";
 import { executerServe } from "./commandes/serve.js";
 import { executerStatus } from "./commandes/status.js";
-import { codeSortiePourErreur, ligneErreurCli } from "./exit-codes.js";
+import { ErreurUsageCli, codeSortiePourErreur, ligneErreurCli } from "./exit-codes.js";
 import { analyserArgv, detecterAideEtCommande } from "./parse-args.js";
 import type { DepsCli } from "./types.js";
 
 /**
- * Point d'entrée commun du binaire (07 §12, D-T13-9) : `src/cli.ts` ne fait que construire
+ * Point d'entrée commun du binaire (07 §12, D-T13-1/D-T13-2) : `src/cli.ts` ne fait que construire
  * `DepsCli` et appeler cette fonction. `--version`/`--help` globaux sont détectés de façon
  * permissive (`detecterAideEtCommande`, sans lever d'erreur sur une option par ailleurs inconnue)
  * avant l'analyse stricte ; toute commande/option invalide passe ensuite par
@@ -54,6 +54,9 @@ export async function executerCli(argv: readonly string[], deps: DepsCli): Promi
     }
   } catch (erreur) {
     deps.stderr.write(`${ligneErreurCli(erreur)}\n`);
+    if (erreur instanceof ErreurUsageCli) {
+      deps.stderr.write(AIDE_COURTE_USAGE);
+    }
     return codeSortiePourErreur(erreur);
   }
 }

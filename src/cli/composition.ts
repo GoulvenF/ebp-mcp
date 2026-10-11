@@ -3,13 +3,13 @@
  * - `mock` : transport mock + identité simulée partagée (`src/mock/`), jamais `transport-fetch`.
  * - `live` : `creerTransportFetch` (07 §4), jamais importé/instancié en mode mock.
  *
- * D-T13-11 : en mode mock, l'état d'authentification (tokens, générations) et le quota vivent sous
+ * D-T13-4 : en mode mock, l'état d'authentification (tokens, générations) et le quota vivent sous
  * `<racine>/mock/...`, distinct de `<racine>/auth/...` utilisé en live — `config.json` lui-même
  * reste unique au niveau `<racine>` (dossiers/profils persistés ne sont pas des secrets, partagés
  * entre modes). Ce sous-répertoire n'existait nulle part avant ce lot (vérifié par exploration) :
  * c'est une décision de composition du CLI, pas un fait déjà câblé par T02/T04/T06.
  *
- * D-T13-12 : sans `config.json` sur disque, `--mock` retombe sur `PROFIL_DEMO` (profil `demo` en
+ * D-T13-4 : sans `config.json` sur disque, `--mock` retombe sur `PROFIL_DEMO` (profil `demo` en
  * mémoire, jamais persisté) ; `configExiste: false` dans le résultat permet aux commandes
  * `dossiers add|remove` de refuser explicitement (code CLI 2) plutôt que de laisser `modifierConfig`
  * échouer plus loin avec un message moins clair. Sans `--mock` et sans fichier, aucun repli : la
@@ -70,7 +70,7 @@ const JOURNAL_SILENCIEUX: Journal = { avertir: () => undefined };
 export interface ContexteCli {
   readonly mode: Mode;
   readonly config: ConfigResolue;
-  /** `false` si `config.json` est absent du disque — v. D-T13-12 : `dossiers add|remove` doivent refuser. */
+  /** `false` si `config.json` est absent du disque — v. D-T13-4 : `dossiers add|remove` doivent refuser. */
   readonly configExiste: boolean;
   readonly cheminConfig: string;
   readonly operations: OperationsFichier;
@@ -93,7 +93,7 @@ function versOptionsCli(options: OptionsCliCommunes): OptionsCli {
   };
 }
 
-/** Construit la configuration résolue, en retombant sur `PROFIL_DEMO` en mock sans fichier (D-T13-12). */
+/** Construit la configuration résolue, en retombant sur `PROFIL_DEMO` en mock sans fichier (D-T13-4). */
 async function resoudreConfigCli(
   options: OptionsCliCommunes,
   deps: DepsCompositionEnv,
@@ -130,7 +130,7 @@ async function resoudreConfigCli(
  * Construit le contexte complet d'une invocation CLI (07 §12) : une seule fonction, mode mock ou
  * live résolu explicitement par `options.mock` (jamais déduit). `racineConfig`/`cheminFichierConfig`
  * restent calculés sur la racine de configuration standard (`XDG_CONFIG_HOME`/`~/.config/ebp-mcp`,
- * 07 §2) ; seule la racine utilisée pour l'identité/les tokens/le quota diverge par mode (D-T13-11).
+ * 07 §2) ; seule la racine utilisée pour l'identité/les tokens/le quota diverge par mode (D-T13-10).
  */
 export async function composerContexteCli(
   options: OptionsCliCommunes,
@@ -154,7 +154,7 @@ export async function composerContexteCli(
   const { config, configExiste, cheminConfig } = await resoudreConfigCli(options, deps, racineAuth, racineTop);
 
   const clock = creerHorlogeReelle();
-  // Répertoire des verrous toujours au niveau `racineTop` (D-T13-11) : `config.json` est partagé
+  // Répertoire des verrous toujours au niveau `racineTop` (D-T13-10) : `config.json` est partagé
   // entre mock et live, son verrou (`NOM_VERROU_CONFIG`) doit donc l'être aussi. Les verrous
   // d'identité/quota sont nommés par hachage de leur propre clé (profil/environnement/empreinte,
   // nom de groupe) : partager ce même répertoire de verrous entre mock et live ne crée donc aucune
