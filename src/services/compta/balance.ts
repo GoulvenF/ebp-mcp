@@ -1,7 +1,9 @@
+import type { z } from "zod";
 import type { LigneEcritureListe } from "../../adapters/compta/ecritures.js";
 import { listerLignesEcriture } from "../../adapters/compta/ecritures.js";
 import { creerBudget, type Budget } from "../../http/budget.js";
 import { decimalAdd, decimalCompare, decimalNegate, decimalSubtract, type DecimalString } from "../../domain/decimal.js";
+import { LigneBalanceSchema } from "../../domain/schemas/compta.js";
 import { parcourir } from "../../pagination/agregat.js";
 import type { PageSource, PositionSource, SourcePaginee } from "../../pagination/source-page.js";
 import { BalanceComptesEntreeSchema, validerEntree } from "../commun/entrees.js";
@@ -15,17 +17,7 @@ import { exigerFamilleOutil } from "../commun/types.js";
  * a été exclue des totaux (deux côtés débit/crédit `null`) — ne reflète pas un arrêt du parcours
  * global, voir `completude`/`raison_arret` du résultat `balance_comptes`.
  */
-export interface LigneBalance {
-  readonly compte: string;
-  readonly debit: DecimalString;
-  readonly credit: DecimalString;
-  readonly solde: DecimalString;
-  readonly solde_debiteur: DecimalString;
-  readonly solde_crediteur: DecimalString;
-  readonly devise: null;
-  readonly lignes: number;
-  readonly incomplet: boolean;
-}
+export type LigneBalance = z.infer<typeof LigneBalanceSchema>;
 
 /**
  * Résultat unique de `balance_comptes` (D-T11-12, 07 §8). Jamais de champ d'équilibre ni de total
@@ -55,6 +47,9 @@ const AVERT_REDUIRE_PERIODE =
 
 const AVERT_BRUT_NON_SUPPORTE =
   "`inclure_brut` non supporté pour `balance_comptes` (agrégat, D-T11-14, 07 §7) : `bruts` reste à `null`.";
+
+const AVERT_MONTANT_INVALIDE =
+  "Montant illisible signalé par la source : ligne non attribuable, totaux possiblement faux.";
 
 /** Taille de page demandée à `/lines-entries` (≤ 100, 07 §5), utilisée pour déduire la fin de source via `renvoyes < take`. */
 const TAILLE_PAGE = 100;
@@ -150,6 +145,7 @@ export async function balanceComptes(
 
   const buckets = new Map<string, SeauCompte>();
   let lignesExclues = 0;
+  let lignesHorsPeriode = 0;
 
   const resultatParcours = await parcourir(deps.scan, {
     contexte: ctx.execution,
@@ -166,6 +162,19 @@ export async function balanceComptes(
     },
     filtre: (ligne) => dansPerimetre(ligne.compte_general, classe, comptes),
     surElement: (ligne) => {
+      // D-T11-5 : `startDate`/`endDate` envoyés sont revérifiés localement sur `ligne.date`.
+      if (ligne.date === null) {
+        // Date absente : ligne non attribuable à la période demandée (traitée comme les autres
+        // exclusions D-T11-12 : compte/montant non exploitable).
+        lignesExclues += 1;
+        return;
+      }
+      if (ligne.date < entreeValidee.du || ligne.date > entreeValidee.au) {
+        // La source a renvoyé une ligne hors période : simplement écartée, sans dégrader la
+        // complétude (D-T11-5), mais sans jamais contribuer aux totaux ni être considérée fiable.
+        lignesHorsPeriode += 1;
+        return;
+      }
       if (ligne.compte_general === null) {
         // Orpheline (D-T11-12) : aucun compte à rattacher, jamais comptée dans un seau.
         lignesExclues += 1;
@@ -178,7 +187,9 @@ export async function balanceComptes(
       }
       seau.lignes += 1;
       if (ligne.debit === null && ligne.credit === null) {
-        // Deux côtés null (D-T11-12, couvre aussi un montant invalide : déjà réduit à `null` par l'adapter).
+        // Deux côtés null (D-T11-12). Un montant invalide sur un seul côté (réduit à `null` par
+        // l'adapter) est traité séparément ci-dessous via les avertissements de mapping, faute
+        // d'attribution fiable à une ligne précise (voir D-T11-14/GOU-337 pour l'attribution exacte).
         seau.incomplet = true;
         lignesExclues += 1;
         return;
@@ -228,7 +239,23 @@ export async function balanceComptes(
       completude = "partielle";
       raisonArret = "source_incomplete";
     }
-    avertissements.push(`${lignesExclues} ligne(s) exclue(s) des totaux : compte ou montant non exploitable.`);
+    avertissements.push(`${lignesExclues} ligne(s) exclue(s) des totaux : compte, date ou montant non exploitable.`);
+  }
+
+  if (lignesHorsPeriode > 0) {
+    approximatif = true;
+    avertissements.push(
+      `${lignesHorsPeriode} ligne(s) hors période [${entreeValidee.du}, ${entreeValidee.au}] renvoyée(s) par la source, écartée(s) des totaux.`,
+    );
+  }
+
+  if (avertissementsAdapter.some((avertissement) => avertissement.startsWith("Montant "))) {
+    approximatif = true;
+    if (completude === "complete") {
+      completude = "partielle";
+      raisonArret = "source_incomplete";
+    }
+    avertissements.push(AVERT_MONTANT_INVALIDE);
   }
 
   avertissements.push(AVERT_DEVISE);
@@ -243,7 +270,7 @@ export async function balanceComptes(
     perimetre: { classe, comptes, statuts: STATUTS_DECLARATION },
     comptes: comptesTries,
     lignes_parcourues: resultatParcours.elementsParcourus,
-    lignes_exclues: lignesExclues,
+    lignes_exclues: lignesExclues + lignesHorsPeriode,
     devise: null,
   };
 

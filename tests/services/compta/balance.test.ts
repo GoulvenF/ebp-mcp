@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { balanceComptes } from "../../../dist/index.js";
-import { contexteServiceCompta, depsServiceDe, ligneBrute } from "./fixtures.js";
+import { contexteServiceCompta, depsServiceDe, ligneBrute } from "./fixtures-balance.js";
 
 const PERIODE = { du: "2026-01-01", au: "2026-01-31" };
 
@@ -219,6 +219,85 @@ describe("balance.ts — D-T11-14, `inclure_brut`", () => {
     const resultat = await balanceComptes(deps, contexteServiceCompta(), { ...PERIODE, inclure_brut: true });
     expect(resultat.bruts).toBeNull();
     expect(resultat.avertissements.some((a) => a.includes("inclure_brut"))).toBe(true);
+  });
+});
+
+describe("balance.ts — montant invalide signalé par l'adapter (un seul côté illisible)", () => {
+  it("`debit: \"abc\", credit: \"10\"` ⇒ résultat approximatif, partielle, source_incomplete, avertissement dédié", async () => {
+    const elements = [
+      ligneBrute({ generalAccount: "411000", debit: "abc", credit: "10" }),
+      ligneBrute({ generalAccount: "411000", debit: "50", credit: null }),
+    ];
+    const deps = depsServiceDe(pageUnique(elements));
+    const resultat = await balanceComptes(deps, contexteServiceCompta(), PERIODE);
+    const balance = resultat.resultats[0]!;
+    // Le débit illisible est réduit à `null` par l'adapter ; en l'absence d'attribution exacte
+    // (D-T11-14/GOU-337), le crédit "10" est quand même additionné : la dégradation est globale.
+    const compte = balance.comptes[0]!;
+    expect(compte.debit).toBe("50");
+    expect(compte.credit).toBe("10");
+    expect(resultat.approximatif).toBe(true);
+    expect(resultat.completude).toBe("partielle");
+    expect(resultat.raison_arret).toBe("source_incomplete");
+    expect(
+      resultat.avertissements.some((a) => a.includes("Montant illisible signalé par la source")),
+    ).toBe(true);
+  });
+});
+
+describe("balance.ts — D-T11-5, revérification locale de la période", () => {
+  it("date hors [du, au] renvoyée par la source ⇒ écartée des totaux, comptée, avertissement, sans dégrader la complétude", async () => {
+    const elements = [
+      ligneBrute({ generalAccount: "411000", entry: { journal: "VE", date: "2025-12-31", entryMode: "Validé" }, debit: "100", credit: null }),
+      ligneBrute({ generalAccount: "411000", debit: "50", credit: null }),
+    ];
+    const deps = depsServiceDe(pageUnique(elements));
+    const resultat = await balanceComptes(deps, contexteServiceCompta(), PERIODE);
+    const balance = resultat.resultats[0]!;
+    expect(balance.comptes).toEqual([
+      {
+        compte: "411000",
+        debit: "50",
+        credit: "0",
+        solde: "50",
+        solde_debiteur: "50",
+        solde_crediteur: "0",
+        devise: null,
+        lignes: 1,
+        incomplet: false,
+      },
+    ]);
+    expect(balance.lignes_exclues).toBe(1);
+    expect(resultat.approximatif).toBe(true);
+    expect(resultat.completude).toBe("complete");
+    expect(resultat.avertissements.some((a) => a.includes("hors période"))).toBe(true);
+  });
+
+  it("date `null` ⇒ écartée des totaux, comptée, approximatif, `completude: partielle`, `raison_arret: source_incomplete`", async () => {
+    const elements = [
+      ligneBrute({ generalAccount: "411000", entry: { journal: "VE", date: null, entryMode: "Validé" }, debit: "100", credit: null }),
+      ligneBrute({ generalAccount: "411000", debit: "50", credit: null }),
+    ];
+    const deps = depsServiceDe(pageUnique(elements));
+    const resultat = await balanceComptes(deps, contexteServiceCompta(), PERIODE);
+    const balance = resultat.resultats[0]!;
+    expect(balance.comptes).toEqual([
+      {
+        compte: "411000",
+        debit: "50",
+        credit: "0",
+        solde: "50",
+        solde_debiteur: "50",
+        solde_crediteur: "0",
+        devise: null,
+        lignes: 1,
+        incomplet: false,
+      },
+    ]);
+    expect(balance.lignes_exclues).toBe(1);
+    expect(resultat.approximatif).toBe(true);
+    expect(resultat.completude).toBe("partielle");
+    expect(resultat.raison_arret).toBe("source_incomplete");
   });
 });
 
