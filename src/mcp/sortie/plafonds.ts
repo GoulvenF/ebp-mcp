@@ -24,12 +24,26 @@ export function verifierPlafondFiche<T>(enveloppe: Enveloppe<T>): void {
 }
 
 /**
- * Garde finale du sérialiseur (D-T12-9) : une enveloppe qui dépasse encore le plafond, brut
- * compris, une fois tout le reste appliqué (politique de sortie, plafond de liste, plafond de
- * fiche) donne `RESPONSE_TOO_LARGE` plutôt qu'une sortie silencieusement tronquée.
+ * Garde finale du sérialiseur (D-T12-9, précision Lead Tech) : une enveloppe qui dépasse encore le
+ * plafond, brut compris, une fois tout le reste appliqué (politique de sortie, plafond de liste,
+ * plafond de fiche). Si `resultats` et `bruts` restent chacun sous le plafond mais le dépassent
+ * ensemble, le brut est omis (`bruts: null` + avertissement, 07 §7) plutôt que de faire échouer
+ * l'appel ; `RESPONSE_TOO_LARGE` n'est levé que si le dépassement persiste sans le brut, ou s'il
+ * n'y avait pas de brut à omettre.
  */
-export function verifierPlafondFinal<T>(enveloppe: Enveloppe<T>): void {
-  if (tailleJsonUtf8(enveloppe) > PLAFOND_SORTIE_OCTETS) {
-    throw erreurReponseTropVolumineuseSortie();
+export function verifierPlafondFinal<T>(enveloppe: Enveloppe<T>): Enveloppe<T> {
+  if (tailleJsonUtf8(enveloppe) <= PLAFOND_SORTIE_OCTETS) {
+    return enveloppe;
   }
+  if (Array.isArray(enveloppe.bruts)) {
+    const sansBrut: Enveloppe<T> = {
+      ...enveloppe,
+      bruts: null,
+      meta: { ...enveloppe.meta, avertissements: [...enveloppe.meta.avertissements, "brut omis : plafond 1 Mio"] },
+    };
+    if (tailleJsonUtf8(sansBrut) <= PLAFOND_SORTIE_OCTETS) {
+      return sansBrut;
+    }
+  }
+  throw erreurReponseTropVolumineuseSortie();
 }

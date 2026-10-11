@@ -61,4 +61,26 @@ describe("appliquerPolitiqueSortie — D-T12-8", () => {
     const masque = appliquerPolitiqueSortie(depuisCache, REDACT) as typeof depuisCache;
     expect(masque.resultats[0]?.email).toBeNull();
   });
+
+  it("un identifiant UUID contenant '-0412-3456-78' reste intact en mode PII (le masquage par motif ne vise pas les données)", () => {
+    const enveloppe = {
+      dossier: "d1",
+      resultats: [{ id: "3fa85f64-5717-0412-3456-7890abcdef12" }],
+      pagination: null,
+      meta: { avertissements: [] as string[] },
+    };
+    const masque = appliquerPolitiqueSortie(enveloppe, REDACT) as typeof enveloppe;
+    expect(masque.resultats[0]?.id).toBe("3fa85f64-5717-0412-3456-7890abcdef12");
+  });
+
+  it("un libelle EBP qui contient un email n'est pas modifié (limite documentée : seuls les textes du serveur sont masqués)", () => {
+    const enveloppe = {
+      dossier: "d1",
+      resultats: [{ libelle: "Contact préféré : contact@exemple.fr" }],
+      pagination: null,
+      meta: { avertissements: [] as string[] },
+    };
+    const masque = appliquerPolitiqueSortie(enveloppe, REDACT) as typeof enveloppe;
+    expect(masque.resultats[0]?.libelle).toBe("Contact préféré : contact@exemple.fr");
+  });
 });

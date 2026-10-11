@@ -146,11 +146,15 @@ export async function executerOutilMetier(
     }
     const enveloppeValidee = parse.data as typeof enveloppeBrute;
     verifierPlafondFiche(enveloppeValidee);
-    verifierPlafondFinal(enveloppeValidee);
+    const enveloppeFinale = verifierPlafondFinal(enveloppeValidee);
 
-    return serialiserSucces(enveloppeValidee);
+    return serialiserSucces(enveloppeFinale);
   } catch (erreur) {
-    deps.journal.erreur(entreeJournalErreur(outil, requeteId, erreur));
+    try {
+      deps.journal.erreur(entreeJournalErreur(outil, requeteId, erreur));
+    } catch {
+      // La journalisation ne doit jamais faire échouer la réponse d'erreur (D-T12-4).
+    }
     return serialiserErreur(versErreurMetier(erreur, options.politique));
   }
 }
