@@ -98,4 +98,44 @@ describe("services/gescom/articles.ts — rechercher_articles : filtres locaux, 
     });
     expect(d.transport.appels).toHaveLength(0);
   });
+
+  it("second appel identique servi par le cache avec `inclure_brut: true` ⇒ `bruts` non nuls et alignés (correctif revue PR#19)", async () => {
+    const page = { elements: [article("a1", "ART1")], take: 50, skip: 0, total: 1 };
+    const d = depsService([{ status: 200, corps: page }]);
+
+    const premier = await rechercherArticles(d, ctxGescom(), { inclure_brut: false });
+    expect(premier.bruts).toBeNull();
+    expect(d.transport.appels).toHaveLength(1);
+
+    const second = await rechercherArticles(d, ctxGescom(), { inclure_brut: true });
+    // Page servie depuis le cache (mêmes filtres, même position) : aucun appel transport de plus.
+    expect(d.transport.appels).toHaveLength(1);
+    expect(second.resultats.map((a) => a.id)).toEqual(["a1"]);
+    expect(second.bruts).toHaveLength(1);
+    expect(second.bruts![0]).toMatchObject({ id: "a1" });
+  });
+
+  it("reprise par `curseur` avec `inclure_brut` ⇒ alignement 1:1 sur l'élément déjà tamponné (correctif revue PR#19)", async () => {
+    const page = {
+      elements: [article("a1", "ART1"), article("a2", "ART2"), article("a3", "ART3")],
+      take: 50,
+      skip: 0,
+      total: 3,
+    };
+    const d = depsService([{ status: 200, corps: page }]);
+
+    const premier = await rechercherArticles(d, ctxGescom(), { limite: 1 });
+    expect(premier.resultats.map((a) => a.id)).toEqual(["a1"]);
+    expect(premier.pagination?.curseur).not.toBeNull();
+    expect(d.transport.appels).toHaveLength(1);
+
+    const curseur = premier.pagination!.curseur as string;
+    const second = await rechercherArticles(d, ctxGescom(), { limite: 1, curseur, inclure_brut: true });
+
+    // `a2` vient du tampon du curseur, jamais d'une nouvelle lecture de page.
+    expect(d.transport.appels).toHaveLength(1);
+    expect(second.resultats.map((a) => a.id)).toEqual(["a2"]);
+    expect(second.bruts).toHaveLength(1);
+    expect(second.bruts![0]).toMatchObject({ id: "a2" });
+  });
 });

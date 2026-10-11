@@ -36,12 +36,25 @@ export const STATUT_ENTREE_VERS_NUMERIQUE: Readonly<Record<string, 0 | 1>> = {
 };
 
 /**
- * Statut entrée ↔ statut domaine déjà mappé par `mapperStatut` (`documents-communs.ts`,
- * `provisoire|valide|inconnu`) : même correspondance numérique que ci-dessus, vue côté domaine
- * plutôt que source, pour filtrer localement une page déjà mappée sans refaire d'appel réseau.
+ * Filtre local `statut` d'un document déjà mappé (D-T11-7, correctif revue PR#19) : le domaine ne
+ * porte que `provisoire|valide|inconnu` (`mapperStatut`, `documents-communs.ts`), donc `valide` et
+ * `facture` partagent le même `documentStatus = 1` et ne se distinguent **que** par le type. Un
+ * devis au statut 1 est un devis « facturé » (`facture`), jamais un document « validé »
+ * (`valide`) : `valide` exclut donc les devis, `facture` ne retient qu'eux. L'appelant a déjà
+ * exclu `document.statut === "inconnu"` avant d'appeler cette fonction.
  */
-export function statutEntreeVersDomaine(statutEntree: string): DocumentVente["statut"] {
-  return STATUT_ENTREE_VERS_NUMERIQUE[statutEntree] === 1 ? "valide" : "provisoire";
+export function documentCorrespondStatut(statutEntree: string, document: DocumentVente): boolean {
+  if (statutEntree === "provisoire") {
+    return document.statut === "provisoire";
+  }
+  const estDevis = document.type !== "inconnu" && TYPE_SOURCE_VERS_ENTREE.get(document.type) === "devis";
+  if (statutEntree === "facture") {
+    return document.statut === "valide" && estDevis;
+  }
+  if (statutEntree === "valide") {
+    return document.statut === "valide" && !estDevis;
+  }
+  return false;
 }
 
 /**

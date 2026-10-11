@@ -14,7 +14,7 @@ import { correspondTexte } from "../commun/texte.js";
 import { exigerFamilleOutil, type ContexteService, type DepsService, type ResultatService } from "../commun/types.js";
 import { identiteScanGescom } from "./identite.js";
 import { resultatServiceDepuisScan, resultatServiceFiche } from "./resultats.js";
-import { sourceDepuisSkipTake } from "./sources.js";
+import { sourceDepuisSkipTake, sourceDepuisSkipTakeAvecSource, type ElementAvecSource } from "./sources.js";
 
 /**
  * `rechercher_articles` (07 §6, D-T11-4/D-T11-6). Seuls `skip`/`take` partent au serveur (`/items`,
@@ -31,32 +31,37 @@ export async function rechercherArticles(
   verifierCapacitesEntree("rechercher_articles", ctx.dossier.famille, entree);
 
   const budget = creerBudget(ctx.execution);
-  const sourcesParId = new Map<string, unknown>();
-  const source = sourceDepuisSkipTake<Article>(
+  const source = sourceDepuisSkipTakeAvecSource<Article>(
     "hubbix-gescom:/items",
     "referentiel",
     100,
     (article) => article.id,
     async (skip, take, b) => {
       const page = await listerArticles(deps.http, b, ctx.http, { skip, take });
-      page.resultats.forEach((article, index) => sourcesParId.set(article.id, page.sourcesEbp[index]));
       return {
         resultats: page.resultats,
         total_source: page.total_source,
         renvoyes: page.renvoyes,
         skip_renvoye: page.skip_renvoye,
+        sourcesEbp: page.sourcesEbp,
       };
     },
   );
 
-  const filtre = (article: Article): boolean => {
+  const filtre = (element: ElementAvecSource<Article>): boolean => {
+    const article = element.objet;
     if (entree.type !== undefined && article.type !== entree.type) return false;
     if (entree.actif !== undefined && article.actif !== entree.actif) return false;
     if (entree.texte !== undefined && !correspondTexte(entree.texte, [article.code, article.libelle])) return false;
     return true;
   };
 
-  const resultat = await scanner<Article>(deps.scan, {
+  const projeter = (element: ElementAvecSource<Article>): { objet: Article; source: unknown } => ({
+    objet: element.objet,
+    source: element.source,
+  });
+
+  const resultat = await scanner<ElementAvecSource<Article>, { objet: Article; source: unknown }>(deps.scan, {
     contexte: ctx.execution,
     budget,
     source,
@@ -67,11 +72,13 @@ export async function rechercherArticles(
       actif: entree.actif ?? null,
     }),
     filtre,
+    projeter,
     ...(entree.curseur !== undefined ? { curseur: entree.curseur } : {}),
   });
 
-  const bruts = entree.inclure_brut ? resultat.resultats.map((article) => sourcesParId.get(article.id) ?? null) : null;
-  return resultatServiceDepuisScan(ctx, budget.restant, resultat, bruts);
+  const resultats = resultat.resultats.map((r) => r.objet);
+  const bruts = entree.inclure_brut ? resultat.resultats.map((r) => r.source) : null;
+  return resultatServiceDepuisScan(ctx, budget.restant, { ...resultat, resultats }, bruts);
 }
 
 /**

@@ -8,7 +8,7 @@ import { verifierCapacitesEntree } from "../commun/capacites.js";
 import { exigerFamilleOutil, type ContexteService, type DepsService, type ResultatService } from "../commun/types.js";
 import { identiteScanGescom } from "./identite.js";
 import { resultatServiceDepuisScan } from "./resultats.js";
-import { sourceDepuisSkipTake } from "./sources.js";
+import { sourceDepuisSkipTakeAvecSource, type ElementAvecSource } from "./sources.js";
 
 /** Échéance enrichie des deux champs de retard calculés (D-T11-9, 07 §8). */
 export interface EcheanceAvecRetard extends Echeance {
@@ -33,27 +33,27 @@ export async function echeancierClients(
 
   const budget = creerBudget(ctx.execution);
   const aujourdHui = aujourdHuiParis(deps.clock);
-  const sourcesParId = new Map<string, unknown>();
   let exclusEnRetardInconnu = 0;
 
-  const source = sourceDepuisSkipTake<Echeance>(
+  const source = sourceDepuisSkipTakeAvecSource<Echeance>(
     "hubbix-gescom:/sale-commitments",
     "transactionnel",
     100,
     (echeance) => echeance.id,
     async (skip, take, b) => {
       const page = await listerEcheances(deps.http, b, ctx.http, { skip, take });
-      page.resultats.forEach((echeance, index) => sourcesParId.set(echeance.id, page.sourcesEbp[index]));
       return {
         resultats: page.resultats,
         total_source: page.total_source,
         renvoyes: page.renvoyes,
         skip_renvoye: page.skip_renvoye,
+        sourcesEbp: page.sourcesEbp,
       };
     },
   );
 
-  const filtre = (echeance: Echeance): boolean => {
+  const filtre = (element: ElementAvecSource<Echeance>): boolean => {
+    const echeance = element.objet;
     if (entree.du !== undefined && (echeance.date === null || joursCivilsEntre(entree.du, echeance.date) < 0)) return false;
     if (entree.au !== undefined && (echeance.date === null || joursCivilsEntre(echeance.date, entree.au) < 0)) return false;
     if (entree.tiers !== undefined && echeance.tiers_id !== entree.tiers) return false;
@@ -68,13 +68,19 @@ export async function echeancierClients(
     return true;
   };
 
-  const projeter = (echeance: Echeance): EcheanceAvecRetard => ({
-    ...echeance,
-    en_retard: estEnRetard(echeance.reste_du, echeance.date, aujourdHui),
-    jours_retard: joursRetard(aujourdHui, echeance.date),
-  });
+  const projeter = (element: ElementAvecSource<Echeance>): { objet: EcheanceAvecRetard; source: unknown } => {
+    const echeance = element.objet;
+    return {
+      objet: {
+        ...echeance,
+        en_retard: estEnRetard(echeance.reste_du, echeance.date, aujourdHui),
+        jours_retard: joursRetard(aujourdHui, echeance.date),
+      },
+      source: element.source,
+    };
+  };
 
-  const resultat = await scanner<Echeance, EcheanceAvecRetard>(deps.scan, {
+  const resultat = await scanner<ElementAvecSource<Echeance>, { objet: EcheanceAvecRetard; source: unknown }>(deps.scan, {
     contexte: ctx.execution,
     budget,
     source,
@@ -90,8 +96,9 @@ export async function echeancierClients(
     ...(entree.curseur !== undefined ? { curseur: entree.curseur } : {}),
   });
 
+  const resultats = resultat.resultats.map((r) => r.objet);
   const avertissements = [...resultat.avertissements];
-  const renduesSansDate = resultat.resultats.filter((e) => e.date === null).length;
+  const renduesSansDate = resultats.filter((e) => e.date === null).length;
   if (renduesSansDate > 0) {
     avertissements.push(`${renduesSansDate} échéance(s) sans date : \`en_retard\`/\`jours_retard\` à \`null\`.`);
   }
@@ -101,6 +108,6 @@ export async function echeancierClients(
     );
   }
 
-  const bruts = entree.inclure_brut ? resultat.resultats.map((echeance) => sourcesParId.get(echeance.id) ?? null) : null;
-  return resultatServiceDepuisScan(ctx, budget.restant, { ...resultat, avertissements }, bruts);
+  const bruts = entree.inclure_brut ? resultat.resultats.map((r) => r.source) : null;
+  return resultatServiceDepuisScan(ctx, budget.restant, { ...resultat, resultats, avertissements }, bruts);
 }

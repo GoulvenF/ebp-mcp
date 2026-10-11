@@ -9,7 +9,7 @@ import { erreurCapaciteNonSupporteeService } from "../commun/erreurs.js";
 import { exigerFamilleOutil, type ContexteService, type DepsService, type ResultatService } from "../commun/types.js";
 import { identiteScanGescom } from "./identite.js";
 import { resultatServiceDepuisScan } from "./resultats.js";
-import { sourceDepuisSkipTake } from "./sources.js";
+import { sourceDepuisSkipTakeAvecSource, type ElementAvecSource } from "./sources.js";
 
 /**
  * `lister_reglements` (07 §6/§8, D-T11-10). `tiers` refusé avant tout réseau (A14) : la source
@@ -34,34 +34,33 @@ export async function listerReglementsService(
   }
 
   const budget = creerBudget(ctx.execution);
-  const sourcesParElement = new Map<Reglement, unknown>();
   // `/settlements` ne porte aucun identifiant unique (ni `id` ni `code` garanti non-null/non-dupliqué) ;
-  // la position globale (`skip` + index dans la page) sert de clé stable pour le moteur de scan.
-  const idParElement = new WeakMap<Reglement, string>();
-
-  const source = sourceDepuisSkipTake<Reglement>(
+  // la clé de position `skip`+index, portée par l'élément lui-même (`ElementAvecSource.cle`),
+  // sert d'identité stable pour le moteur de scan — y compris pour une page servie depuis le
+  // cache ou reprise via un curseur (correctif revue PR#19 : l'ancienne `WeakMap` locale au call
+  // ne survivait pas à un hit de cache, ce qui écrasait tout à `"inconnu"` et faisait disparaître
+  // des pages entières par déduplication).
+  const source = sourceDepuisSkipTakeAvecSource<Reglement>(
     "hubbix-gescom:/settlements",
     "transactionnel",
     100,
-    (reglement) => idParElement.get(reglement) ?? "inconnu",
+    () => null,
     async (skip, take, b) => {
       const page = await listerReglementsAdapter(deps.http, b, ctx.http, { skip, take });
-      page.resultats.forEach((reglement, index) => {
-        idParElement.set(reglement, String(skip + index));
-        sourcesParElement.set(reglement, page.sourcesEbp[index]);
-      });
       return {
         resultats: page.resultats,
         total_source: page.total_source,
         renvoyes: page.renvoyes,
         skip_renvoye: page.skip_renvoye,
+        sourcesEbp: page.sourcesEbp,
       };
     },
   );
 
   let exclusNonAffectesInconnu = 0;
 
-  const filtre = (reglement: Reglement): boolean => {
+  const filtre = (element: ElementAvecSource<Reglement>): boolean => {
+    const reglement = element.objet;
     if (entree.du !== undefined && (reglement.date === null || joursCivilsEntre(entree.du, reglement.date) < 0)) return false;
     if (entree.au !== undefined && (reglement.date === null || joursCivilsEntre(reglement.date, entree.au) < 0)) return false;
     if (entree.non_affectes) {
@@ -74,7 +73,12 @@ export async function listerReglementsService(
     return true;
   };
 
-  const resultat = await scanner<Reglement>(deps.scan, {
+  const projeter = (element: ElementAvecSource<Reglement>): { objet: Reglement; source: unknown } => ({
+    objet: element.objet,
+    source: element.source,
+  });
+
+  const resultat = await scanner<ElementAvecSource<Reglement>, { objet: Reglement; source: unknown }>(deps.scan, {
     contexte: ctx.execution,
     budget,
     source,
@@ -85,9 +89,11 @@ export async function listerReglementsService(
       non_affectes: entree.non_affectes,
     }),
     filtre,
+    projeter,
     ...(entree.curseur !== undefined ? { curseur: entree.curseur } : {}),
   });
 
+  const resultats = resultat.resultats.map((r) => r.objet);
   const avertissements = [...resultat.avertissements];
   let approximatif = resultat.approximatif;
   if (exclusNonAffectesInconnu > 0) {
@@ -97,6 +103,6 @@ export async function listerReglementsService(
     );
   }
 
-  const bruts = entree.inclure_brut ? resultat.resultats.map((reglement) => sourcesParElement.get(reglement) ?? null) : null;
-  return resultatServiceDepuisScan(ctx, budget.restant, { ...resultat, approximatif, avertissements }, bruts);
+  const bruts = entree.inclure_brut ? resultat.resultats.map((r) => r.source) : null;
+  return resultatServiceDepuisScan(ctx, budget.restant, { ...resultat, resultats, approximatif, avertissements }, bruts);
 }

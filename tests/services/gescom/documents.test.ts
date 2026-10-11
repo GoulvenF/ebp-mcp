@@ -81,6 +81,74 @@ describe("services/gescom/documents.ts — lister_documents_vente : capacités e
   });
 });
 
+describe("services/gescom/documents.ts — filtre `statut` : `facture` vs `valide` (D-T11-7, correctif revue PR#19)", () => {
+  it("`statut: \"facture\"` ⇒ ne conserve que les devis au statut 1, écarte les factures validées", async () => {
+    const pageListe = pageDocuments([
+      docListe("devis-1", { documentType: "SaleQuote", documentStatus: 1, number: "D-1" }),
+      docListe("facture-1", { documentType: "SaleInvoice", documentStatus: 1, number: "F-1" }),
+    ]);
+    const d = depsService([{ status: 200, corps: pageListe }]);
+    const resultat = await listerDocumentsVenteService(d, ctxGescom(), {
+      types: ["devis", "facture"],
+      statut: "facture",
+    });
+    expect(resultat.resultats.map((doc) => doc.id)).toEqual(["devis-1"]);
+  });
+
+  it("`statut: \"valide\"` ⇒ ne conserve que les documents validés hors devis, écarte un devis facturé", async () => {
+    const pageListe = pageDocuments([
+      docListe("devis-1", { documentType: "SaleQuote", documentStatus: 1, number: "D-1" }),
+      docListe("facture-1", { documentType: "SaleInvoice", documentStatus: 1, number: "F-1" }),
+    ]);
+    const d = depsService([{ status: 200, corps: pageListe }]);
+    const resultat = await listerDocumentsVenteService(d, ctxGescom(), {
+      types: ["devis", "facture"],
+      statut: "valide",
+    });
+    expect(resultat.resultats.map((doc) => doc.id)).toEqual(["facture-1"]);
+  });
+});
+
+describe("services/gescom/documents.ts — `inclure_brut` (D-T11-14, correctif revue PR#19)", () => {
+  it("`inclure_brut: true` avec filtre `tiers` (après enrichissement) ⇒ `bruts` aligné 1:1 avec `resultats`", async () => {
+    const pageListe = pageDocuments([docListe("d1")]);
+    const d = depsService([
+      { status: 200, corps: pageListe },
+      { status: 200, corps: detailFacture("d1", { customerId: "tiers-1" }) },
+    ]);
+    const resultat = await listerDocumentsVenteService(d, ctxGescom(), { tiers: "tiers-1", inclure_brut: true });
+    expect(resultat.resultats.map((doc) => doc.id)).toEqual(["d1"]);
+    expect(resultat.bruts).toHaveLength(1);
+    expect(resultat.bruts![0]).toMatchObject({ id: "d1" });
+  });
+
+  it("second appel identique servi par le cache avec `inclure_brut: true` ⇒ `bruts` non nuls et alignés", async () => {
+    const pageListe = pageDocuments([docListe("d1")]);
+    const d = depsService([{ status: 200, corps: pageListe }]);
+
+    const premier = await listerDocumentsVenteService(d, ctxGescom(), { inclure_brut: false });
+    expect(premier.bruts).toBeNull();
+    expect(d.transport.appels).toHaveLength(1);
+
+    const second = await listerDocumentsVenteService(d, ctxGescom(), { inclure_brut: true });
+    // Page servie depuis le cache : aucun appel transport de plus.
+    expect(d.transport.appels).toHaveLength(1);
+    expect(second.resultats.map((doc) => doc.id)).toEqual(["d1"]);
+    expect(second.bruts).toHaveLength(1);
+    expect(second.bruts![0]).toMatchObject({ id: "d1" });
+  });
+
+  it("`detail_document` : `inclure_brut: true` ⇒ `bruts` aligné 1:1 sur la fiche", async () => {
+    const d = depsService([{ status: 200, corps: detailFacture("d1") }]);
+    const resultat = await detailDocument(d, ctxGescom(), {
+      reference: { id: "d1", type: "facture", statut: "provisoire" },
+      inclure_brut: true,
+    });
+    expect(resultat.bruts).toHaveLength(1);
+    expect(resultat.bruts![0]).toMatchObject({ id: "d1" });
+  });
+});
+
 describe("services/gescom/documents.ts — lister_documents_vente : filtre `tiers` (D-T11-8/A14)", () => {
   it("conserve un document dont le détail porte l'ID, écarte un document de même nom mais d'autre ID", async () => {
     const page = pageDocuments([docListe("d1", { name: "Client X" }), docListe("d2", { name: "Client X" })]);

@@ -68,3 +68,59 @@ describe("services/gescom/reglements.ts — `non_affectes` (décimal)", () => {
     expect(resultat.resultats[0]).toMatchObject({ tiers_id: null, tiers_nom: "Client Alpha" });
   });
 });
+
+describe("services/gescom/reglements.ts — `inclure_brut` (D-T11-14, correctif revue PR#19)", () => {
+  it("`inclure_brut: true` ⇒ `bruts` aligné 1:1 avec `resultats`", async () => {
+    const d = depsService([{ status: 200, corps: page([reglement("RG-1")]) }]);
+    const resultat = await listerReglementsService(d, ctxGescom(), { inclure_brut: true });
+    expect(resultat.bruts).toHaveLength(resultat.resultats.length);
+    expect(resultat.bruts![0]).toMatchObject({ code: "RG-1" });
+  });
+
+  it("second appel identique servi par le cache avec `inclure_brut: true` ⇒ `bruts` non nuls et alignés", async () => {
+    const d = depsService([{ status: 200, corps: page([reglement("RG-1")]) }]);
+
+    const premier = await listerReglementsService(d, ctxGescom(), { inclure_brut: false });
+    expect(premier.bruts).toBeNull();
+    expect(d.transport.appels).toHaveLength(1);
+
+    const second = await listerReglementsService(d, ctxGescom(), { inclure_brut: true });
+    // Page servie depuis le cache : aucun appel transport de plus.
+    expect(d.transport.appels).toHaveLength(1);
+    expect(second.resultats.map((r) => r.code)).toEqual(["RG-1"]);
+    expect(second.bruts).toHaveLength(1);
+    expect(second.bruts![0]).toMatchObject({ code: "RG-1" });
+  });
+
+  it("150 règlements sur 2 pages, appelé deux fois ⇒ même total, `completude: \"complete\"` (ex-régression : clé `idElement` écrasée à `\"inconnu\"` sur cache)", async () => {
+    const page1 = {
+      elements: Array.from({ length: 100 }, (_, i) => reglement(`RG-${i}`)),
+      take: 100,
+      skip: 0,
+      total: 150,
+    };
+    const page2 = {
+      elements: Array.from({ length: 50 }, (_, i) => reglement(`RG-${100 + i}`)),
+      take: 100,
+      skip: 100,
+      total: 150,
+    };
+    const d = depsService([
+      { status: 200, corps: page1 },
+      { status: 200, corps: page2 },
+    ]);
+
+    const premier = await listerReglementsService(d, ctxGescom(), { limite: 500 });
+    expect(premier.resultats).toHaveLength(150);
+    expect(premier.completude).toBe("complete");
+    expect(d.transport.appels).toHaveLength(2);
+
+    // Deuxième appel identique : les deux pages viennent du cache (0 appel transport de plus),
+    // `/settlements` n'ayant aucun identifiant stable, la clé de position doit rester distincte
+    // par élément même quand la page est servie depuis le cache.
+    const second = await listerReglementsService(d, ctxGescom(), { limite: 500 });
+    expect(d.transport.appels).toHaveLength(2);
+    expect(second.resultats).toHaveLength(150);
+    expect(second.completude).toBe("complete");
+  });
+});

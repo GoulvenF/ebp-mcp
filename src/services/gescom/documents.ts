@@ -18,13 +18,13 @@ import { correspondTexte } from "../commun/texte.js";
 import { exigerFamilleOutil, type ContexteService, type DepsService, type ResultatService } from "../commun/types.js";
 import { identiteScanGescom } from "./identite.js";
 import {
+  documentCorrespondStatut,
   resoudreTypeStatutSourceDepuisElement,
   resoudreTypeStatutSourceDepuisReference,
-  statutEntreeVersDomaine,
   TYPE_SOURCE_VERS_ENTREE,
 } from "./mapping.js";
 import { resultatServiceDepuisScan, resultatServiceFiche } from "./resultats.js";
-import { sourceDepuisSkipTake } from "./sources.js";
+import { sourceDepuisSkipTake, sourceDepuisSkipTakeAvecSource, type ElementAvecSource } from "./sources.js";
 
 /** Vue interne d'un candidat document pendant le scan ; jamais rendue telle quelle (champs `_` strippés par `projeter`). */
 interface CandidatDocument extends DocumentVente {
@@ -83,27 +83,27 @@ export async function listerDocumentsVenteService(
   verifierCapacitesEntree("lister_documents_vente", ctx.dossier.famille, entree);
 
   const budget = creerBudget(ctx.execution);
-  const sourcesParId = new Map<string, unknown>();
-  const source = sourceDepuisSkipTake<CandidatDocument>(
+  const source = sourceDepuisSkipTakeAvecSource<CandidatDocument>(
     "hubbix-gescom:/sale-documents",
     "transactionnel",
     100,
     (document) => document.id,
     async (skip, take, b) => {
       const page = await listerDocumentsVenteAdapter(deps.http, b, ctx.http, { skip, take });
-      page.resultats.forEach((document, index) => sourcesParId.set(document.id, page.sourcesEbp[index]));
       return {
         resultats: page.resultats,
         total_source: page.total_source,
         renvoyes: page.renvoyes,
         skip_renvoye: page.skip_renvoye,
+        sourcesEbp: page.sourcesEbp,
       };
     },
   );
 
   const typesEntree = entree.types !== undefined ? new Set<string>(entree.types) : null;
 
-  const filtre = (document: DocumentVente): boolean => {
+  const filtre = (element: ElementAvecSource<CandidatDocument>): boolean => {
+    const document = element.objet;
     if (typesEntree !== null) {
       if (document.type === "inconnu") return false;
       const typeEntree = TYPE_SOURCE_VERS_ENTREE.get(document.type);
@@ -111,7 +111,7 @@ export async function listerDocumentsVenteService(
     }
     if (entree.statut !== undefined) {
       if (document.statut === "inconnu") return false;
-      if (statutEntreeVersDomaine(entree.statut) !== document.statut) return false;
+      if (!documentCorrespondStatut(entree.statut, document)) return false;
     }
     if (entree.du !== undefined && (document.date === null || joursCivilsEntre(entree.du, document.date) < 0)) return false;
     if (entree.au !== undefined && (document.date === null || joursCivilsEntre(document.date, entree.au) < 0)) return false;
@@ -125,21 +125,23 @@ export async function listerDocumentsVenteService(
   const enrichir =
     entree.tiers === undefined
       ? undefined
-      : async (candidat: CandidatDocument, b: Budget): Promise<CandidatDocument> => {
+      : async (element: ElementAvecSource<CandidatDocument>, b: Budget): Promise<ElementAvecSource<CandidatDocument>> => {
+          const candidat = element.objet;
           const route = resoudreTypeStatutSourceDepuisElement(candidat);
           if (route === null) {
             nonVerifiables += 1;
-            return { ...candidat, _nonVerifiable: true };
+            return { ...element, objet: { ...candidat, _nonVerifiable: true } };
           }
           const fiche = await lireDetailDocumentVente(deps.http, b, ctx.http, route.documentType, route.documentStatus, candidat.id);
           lecturesDetail += 1;
-          return { ...candidat, _tiersIdVerifie: fiche.resultat.tiers_id };
+          return { ...element, objet: { ...candidat, _tiersIdVerifie: fiche.resultat.tiers_id } };
         };
 
   const filtreApresEnrichissement =
     entree.tiers === undefined
       ? undefined
-      : (candidat: CandidatDocument): boolean => {
+      : (element: ElementAvecSource<CandidatDocument>): boolean => {
+          const candidat = element.objet;
           if (candidat._nonVerifiable === true || candidat._tiersIdVerifie === undefined || candidat._tiersIdVerifie === null) {
             if (candidat._tiersIdVerifie === null) nonVerifiables += 1;
             return false;
@@ -147,7 +149,12 @@ export async function listerDocumentsVenteService(
           return candidat._tiersIdVerifie === entree.tiers;
         };
 
-  const resultat = await scanner<CandidatDocument, DocumentVente>(deps.scan, {
+  const projeter = (element: ElementAvecSource<CandidatDocument>): { objet: DocumentVente; source: unknown } => ({
+    objet: depouillerCandidat(element.objet),
+    source: element.source,
+  });
+
+  const resultat = await scanner<ElementAvecSource<CandidatDocument>, { objet: DocumentVente; source: unknown }>(deps.scan, {
     contexte: ctx.execution,
     budget,
     source,
@@ -163,10 +170,11 @@ export async function listerDocumentsVenteService(
     filtre,
     ...(enrichir !== undefined ? { enrichir } : {}),
     ...(filtreApresEnrichissement !== undefined ? { filtreApresEnrichissement } : {}),
-    projeter: depouillerCandidat,
+    projeter,
     ...(entree.curseur !== undefined ? { curseur: entree.curseur } : {}),
   });
 
+  const resultats = resultat.resultats.map((r) => r.objet);
   let approximatif = resultat.approximatif;
   let completude = resultat.completude;
   let raisonArret = resultat.raisonArret;
@@ -185,11 +193,11 @@ export async function listerDocumentsVenteService(
     avertissements.push(`${lecturesDetail} lecture(s) de détail effectuée(s) pour vérifier le filtre \`tiers\`.`);
   }
 
-  const bruts = entree.inclure_brut ? resultat.resultats.map((document) => sourcesParId.get(document.id) ?? null) : null;
+  const bruts = entree.inclure_brut ? resultat.resultats.map((r) => r.source) : null;
   return resultatServiceDepuisScan(
     ctx,
     budget.restant,
-    { ...resultat, approximatif, completude, raisonArret, avertissements },
+    { ...resultat, resultats, approximatif, completude, raisonArret, avertissements },
     bruts,
   );
 }

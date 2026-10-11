@@ -85,3 +85,27 @@ describe("services/gescom/echeancier.ts — filtre `tiers` exact sur `tiers_id`"
     expect(resultat.resultats.map((e) => e.id)).toEqual(["e1"]);
   });
 });
+
+describe("services/gescom/echeancier.ts — `inclure_brut` (D-T11-14, correctif revue PR#19)", () => {
+  it("`inclure_brut: true` ⇒ `bruts` aligné 1:1 avec `resultats`", async () => {
+    const d = depsService([{ status: 200, corps: page([echeance("e1")]) }]);
+    const resultat = await echeancierClients(d, ctxGescom(), { inclure_brut: true });
+    expect(resultat.bruts).toHaveLength(resultat.resultats.length);
+    expect(resultat.bruts![0]).toMatchObject({ id: "e1" });
+  });
+
+  it("second appel identique servi par le cache avec `inclure_brut: true` ⇒ `bruts` non nuls et alignés", async () => {
+    const d = depsService([{ status: 200, corps: page([echeance("e1")]) }]);
+
+    const premier = await echeancierClients(d, ctxGescom(), { inclure_brut: false });
+    expect(premier.bruts).toBeNull();
+    expect(d.transport.appels).toHaveLength(1);
+
+    const second = await echeancierClients(d, ctxGescom(), { inclure_brut: true });
+    // Page servie depuis le cache : aucun appel transport de plus.
+    expect(d.transport.appels).toHaveLength(1);
+    expect(second.resultats.map((e) => e.id)).toEqual(["e1"]);
+    expect(second.bruts).toHaveLength(1);
+    expect(second.bruts![0]).toMatchObject({ id: "e1" });
+  });
+});
