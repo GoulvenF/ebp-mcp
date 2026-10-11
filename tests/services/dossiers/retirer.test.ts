@@ -44,7 +44,7 @@ describe("services/dossiers : retirerDossier", () => {
     expect(deps.transport.appels).toHaveLength(0);
     const fichier = await relireFichier(chemin);
     expect(fichier.profiles.default!.dossiers.prod.map((d) => d.alias)).toEqual(["dossier-prod"]);
-    expect(fichier.profiles.default!.defaultDossier).toEqual({ prod: "dossier-prod" });
+    expect(fichier.profiles.default!.defaultDossier).toEqual({ prod: "dossier-prod", preprod: "dossier-preprod" });
   });
 
   it("retrait du dossier par défaut efface defaultDossier[environnement]", async () => {
@@ -56,7 +56,7 @@ describe("services/dossiers : retirerDossier", () => {
     expect(deps.transport.appels).toHaveLength(0);
     const fichier = await relireFichier(chemin);
     expect(fichier.profiles.default!.dossiers.prod).toEqual([]);
-    expect(fichier.profiles.default!.defaultDossier).toBeUndefined();
+    expect(fichier.profiles.default!.defaultDossier).toEqual({ preprod: "dossier-preprod" });
   });
 
   it("alias absent ⇒ INVALID_ARGUMENT, config.json intact, aucun appel transport", async () => {

@@ -35,6 +35,7 @@ describe("services/dossiers : ajouterDossier", () => {
   });
 
   it("ajout réussi CPT : une seule route appelée, bon en-tête tenantid, dossier persisté, reste inchangé", async () => {
+    const avant = await relireFichier(chemin);
     const deps = depsDe(dir, [{ status: 200, corps: { domainName: "D", domainCode: "C", version: "1" } }]);
     const ctx = ctxDe(dir);
 
@@ -58,17 +59,30 @@ describe("services/dossiers : ajouterDossier", () => {
       nom: "Second",
       tenantId: ID_CPT_2,
     });
-    expect(prod.find((d) => d.alias === "dossier-prod")).toEqual({
-      alias: "dossier-prod",
-      famille: "hubbix-compta",
-      nom: null,
-      tenantId: TENANT_ID_1,
+    // Seul `profiles.default.dossiers.prod` change : comparaison de l'objet relu entier, écart
+    // limité au dossier ajouté.
+    expect(fichier).toEqual({
+      ...avant,
+      profiles: {
+        ...avant.profiles,
+        default: {
+          ...avant.profiles.default!,
+          dossiers: {
+            ...avant.profiles.default!.dossiers,
+            prod: [...avant.profiles.default!.dossiers.prod, {
+              alias: "second",
+              famille: "hubbix-compta",
+              nom: "Second",
+              tenantId: ID_CPT_2,
+            }],
+          },
+        },
+      },
     });
-    expect(fichier.profiles.default!.dossiers.preprod).toEqual([]);
-    expect(fichier.profiles.default!.defaultDossier).toEqual({ prod: "dossier-prod" });
   });
 
   it("ajout réussi GC : une seule route appelée, bon en-tête DomainId, nom null par défaut", async () => {
+    const avant = await relireFichier(chemin);
     const deps = depsDe(dir, [{ status: 200, corps: [{ label: "x", rate: "20", territoriality: 0, isDefault: true }] }]);
     const ctx = ctxDe(dir);
 
@@ -85,6 +99,26 @@ describe("services/dossiers : ajouterDossier", () => {
       famille: "hubbix-gescom",
       nom: null,
       domainId: DOMAIN_ID_1,
+    });
+    // Seul `profiles.default.dossiers.prod` change : comparaison de l'objet relu entier, écart
+    // limité au dossier ajouté.
+    expect(fichier).toEqual({
+      ...avant,
+      profiles: {
+        ...avant.profiles,
+        default: {
+          ...avant.profiles.default!,
+          dossiers: {
+            ...avant.profiles.default!.dossiers,
+            prod: [...avant.profiles.default!.dossiers.prod, {
+              alias: "gc-1",
+              famille: "hubbix-gescom",
+              nom: null,
+              domainId: DOMAIN_ID_1,
+            }],
+          },
+        },
+      },
     });
   });
 
@@ -127,16 +161,21 @@ describe("services/dossiers : ajouterDossier", () => {
   });
 
   it.each([
-    ["alias invalide", { famille: "hubbix-compta" as const, id: ID_CPT_2, alias: "Alias Invalide" }],
-    ["alias en double", { famille: "hubbix-compta" as const, id: ID_CPT_2, alias: "dossier-prod" }],
-    ["famille inactive", { famille: "hubbix-gescom" as const, id: DOMAIN_ID_1, alias: "x" }],
-    ["GUID invalide", { famille: "hubbix-compta" as const, id: "pas-un-guid", alias: "x" }],
-    ["id déjà déclaré", { famille: "hubbix-compta" as const, id: TENANT_ID_1, alias: "x" }],
-  ])("contrôle local (%s) : erreur, zéro appel transport", async (_nom, entree) => {
+    ["alias invalide", { famille: "hubbix-compta" as const, id: ID_CPT_2, alias: "Alias Invalide" }, "INVALID_ARGUMENT"],
+    ["alias en double", { famille: "hubbix-compta" as const, id: ID_CPT_2, alias: "dossier-prod" }, "INVALID_ARGUMENT"],
+    ["famille inactive", { famille: "hubbix-gescom" as const, id: DOMAIN_ID_1, alias: "x" }, "INVALID_ARGUMENT"],
+    ["GUID invalide", { famille: "hubbix-compta" as const, id: "pas-un-guid", alias: "x" }, "INVALID_ARGUMENT"],
+    ["id déjà déclaré", { famille: "hubbix-compta" as const, id: TENANT_ID_1, alias: "x" }, "INVALID_ARGUMENT"],
+    [
+      "id déjà déclaré, variante en majuscules",
+      { famille: "hubbix-compta" as const, id: TENANT_ID_1.toUpperCase(), alias: "x" },
+      "INVALID_ARGUMENT",
+    ],
+  ])("contrôle local (%s) : erreur %s, zéro appel transport", async (_nom, entree, code) => {
     const ctx = ctxDe(dir, entree.famille === "hubbix-gescom" ? { famillesActives: ["hubbix-compta"] } : undefined);
     const deps = depsDe(dir, []);
 
-    await expect(ajouterDossier(deps, entree, ctx)).rejects.toBeInstanceOf(ErreurService);
+    await attendCode(ajouterDossier(deps, entree, ctx), code);
     expect(deps.transport.appels).toHaveLength(0);
   });
 

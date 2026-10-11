@@ -18,8 +18,9 @@ import {
   type ReponseFactice,
 } from "../../http/fixtures.js";
 
-export const TENANT_ID_1 = "11111111-1111-4111-8111-111111111111";
+export const TENANT_ID_1 = "1a1a1a1a-1a1a-4a1a-8a1a-1a1a1a1a1a1a";
 export const DOMAIN_ID_1 = "22222222-2222-4222-8222-222222222222";
+export const TENANT_ID_PREPROD = "33333333-3333-4333-8333-333333333333";
 
 const DEPART = new Date("2026-01-01T00:00:00.000Z");
 
@@ -31,7 +32,11 @@ export async function nettoyerRepertoire(chemin: string): Promise<void> {
   await rm(chemin, { recursive: true, force: true });
 }
 
-/** Fichier `config.json` minimal valide : un profil `default`, un dossier CPT déjà déclaré en prod. */
+/**
+ * Fichier `config.json` minimal valide : un profil `default` (dossier CPT en prod, dossier CPT en
+ * preprod avec défaut) et un second profil `autre` intact, pour vérifier que `ajouterDossier` ne
+ * touche que `profiles.default.dossiers.prod`.
+ */
 export function fichierTest(): FichierConfig {
   return {
     schemaVersion: 1,
@@ -45,9 +50,22 @@ export function fichierTest(): FichierConfig {
         quotaGroup: "grp",
         dossiers: {
           prod: [{ alias: "dossier-prod", famille: "hubbix-compta", nom: null, tenantId: TENANT_ID_1 }],
-          preprod: [],
+          preprod: [{ alias: "dossier-preprod", famille: "hubbix-compta", nom: null, tenantId: TENANT_ID_PREPROD }],
         },
-        defaultDossier: { prod: "dossier-prod" },
+        defaultDossier: { prod: "dossier-prod", preprod: "dossier-preprod" },
+      },
+      autre: {
+        env: "preprod",
+        clientId: "client-autre",
+        redirectUri: "http://127.0.0.1:9001/callback",
+        pkce: "required",
+        enabledFamilies: ["hubbix-gescom"],
+        quotaGroup: "grp",
+        dossiers: {
+          prod: [],
+          preprod: [{ alias: "autre-dossier", famille: "hubbix-gescom", nom: "Autre", domainId: DOMAIN_ID_1 }],
+        },
+        defaultDossier: { preprod: "autre-dossier" },
       },
     },
     quotaGroups: {

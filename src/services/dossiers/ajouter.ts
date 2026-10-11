@@ -43,7 +43,7 @@ function validerEntreeAjout(entree: EntreeAjouterDossier, ctx: ContexteDossiers)
       alias: entree.alias,
     });
   }
-  if (liste.some((d) => d.famille === entree.famille && d.id === entree.id)) {
+  if (liste.some((d) => d.famille === entree.famille && d.id.toLowerCase() === entree.id.toLowerCase())) {
     throw erreurArgumentInvalideService(
       "Ce dossier est déjà déclaré pour cette famille dans cet environnement.",
       { id: entree.id, famille: entree.famille },
@@ -123,7 +123,11 @@ export async function ajouterDossier(
         });
       }
       const idExistant = entree.famille === "hubbix-compta" ? "tenantId" : "domainId";
-      if (listeActuelle.some((d) => d.famille === entree.famille && d[idExistant] === entree.id)) {
+      if (
+        listeActuelle.some(
+          (d) => d.famille === entree.famille && (d[idExistant] ?? "").toLowerCase() === entree.id.toLowerCase(),
+        )
+      ) {
         throw erreurArgumentInvalideService(
           "Ce dossier est déjà déclaré pour cette famille dans cet environnement.",
           { id: entree.id, famille: entree.famille },
