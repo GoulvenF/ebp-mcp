@@ -35,3 +35,39 @@ npm run typecheck   # tsc --noEmit sur src/ et tests/
 npm test            # vitest run (déclenche le build si nécessaire)
 npm run build       # tsc -p tsconfig.build.json → dist/
 ```
+
+## Binaire `ebp-mcp`
+
+Non publié ni installé globalement : après `npm run build`, le binaire est `dist/cli.js`
+(exécutable, shebang Node). Toujours l'invoquer explicitement avec `node` dans ce dépôt :
+
+```sh
+node dist/cli.js <commande> [options]
+```
+
+**Commandes** : `serve` (défaut), `login [--no-browser]`, `logout`, `status [--json]`,
+`dossiers list [--json]`, `dossiers add --famille <hubbix-compta|hubbix-gescom> --id <guid>
+--alias <alias> [--nom <nom>]`, `dossiers remove --alias <alias>`.
+
+**Options communes** : `--profile <p>`, `--env <prod|preprod>`, `--mock` (données synthétiques,
+aucun réseau réel). `--help`/`-h` et `--version` existent au niveau global et par commande.
+
+**Codes de sortie** : `0` succès ; `2` entrée/config invalide ou usage (commande/option inconnue) ;
+`3` authentification requise ; `1` toute autre erreur.
+
+### Démonstration hors ligne (`--mock`)
+
+```sh
+node dist/cli.js login --mock    # écrit des tokens simulés sous <racine>/mock/
+node dist/cli.js serve --mock    # serveur MCP sur stdio, données synthétiques
+```
+
+Aucune émission réseau réelle en mode mock (transport simulé, identité OAuth simulée). Les
+réponses portent `meta.mode: "mock"` ; les données exposées sont synthétiques (jeu de démo
+`src/mock/donnees/`), jamais des données EBP réelles.
+
+### MCP Inspector local
+
+```sh
+npx @modelcontextprotocol/inspector node dist/cli.js serve --mock
+```

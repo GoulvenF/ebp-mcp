@@ -30,7 +30,9 @@ Les décisions D01–D08 et les contrats de 07 sont désormais applicables. D09 
 
 ## Utiliser le serveur en bibliothèque
 
-T12 livré : `creerFabriqueServeur(depsProcessus, options)` (`src/mcp/index.ts`) rend une fabrique ; chaque appel crée un `Server` MCP avec sa propre session (dossier actif, curseurs). `options.mode` (`"mock" | "live"`) est obligatoire, sans défaut. `depsProcessus` injecte tout ce que le serveur ne construit jamais lui-même : `config`, `http` (transport, quota, hookToken), `cache`, `clock`, `tokenStore`, `journal` (stderr). `demarrerStdio(fabrique)` connecte un `StdioServerTransport` au `Server` produit. Le binaire et `serve --mock` sur fixtures restent à T13 (08).
+T12 livré : `creerFabriqueServeur(depsProcessus, options)` (`src/mcp/index.ts`) rend une fabrique ; chaque appel crée un `Server` MCP avec sa propre session (dossier actif, curseurs). `options.mode` (`"mock" | "live"`) est obligatoire, sans défaut. `depsProcessus` injecte tout ce que le serveur ne construit jamais lui-même : `config`, `http` (transport, quota, hookToken), `cache`, `clock`, `tokenStore`, `journal` (stderr). `demarrerStdio(fabrique)` connecte un `StdioServerTransport` au `Server` produit.
+
+T13 livré : binaire `ebp-mcp` (`src/cli.ts`, `src/cli/`), 7 commandes/sous-commandes, codes de sortie (07 §12), `composerContexteCli` comme seul point de composition mock/live, arrêt propre sur SIGTERM/SIGINT/fin de stdin. Voir [README](../README.md#binaire-ebp-mcp) pour l'usage et la démonstration `--mock`.
 
 ## Traçabilité
 
