@@ -424,13 +424,13 @@ describe("ressources (D-T12-13)", () => {
     const contenu = JSON.parse((lecture.contents[0] as { text: string }).text) as {
       resultats: unknown[];
       pagination: { curseur: string | null; hasMore: boolean };
-      completude: string;
-      meta: { avertissements: string[] };
+      meta: { completude: string; raison_arret: string | null; avertissements: string[] };
     };
     expect(contenu.resultats).toHaveLength(100);
     expect(contenu.pagination.curseur).toBeNull();
     expect(contenu.pagination.hasMore).toBe(true);
-    expect(contenu.completude).toBe("page");
+    expect(contenu.meta.completude).toBe("page");
+    expect(contenu.meta.raison_arret).toBe("limite");
     expect(contenu.meta.avertissements).toContain("ressource limitée aux 100 premiers éléments ; aucune continuation en v0.1");
   });
 
