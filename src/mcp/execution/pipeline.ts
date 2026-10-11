@@ -1,3 +1,5 @@
+import type { z } from "zod";
+import type { Dossier } from "../../config/dossiers.js";
 import type { OutilMetier } from "../../services/commun/capacites.js";
 import { validerEntree } from "../../services/commun/entrees.js";
 import type { ContexteService, DepsService } from "../../services/commun/types.js";
@@ -6,6 +8,7 @@ import type { ContexteHttp } from "../../http/client.js";
 import { idRequeteCourt } from "../../http/journal-http.js";
 import type { ExecutionContext } from "../../ports/execution-context.js";
 import { enveloppeSchema } from "../../domain/schemas/commun.js";
+import type { Enveloppe } from "../../domain/envelope.js";
 import {
   appliquerPolitiqueSortie,
   construireEnveloppe,
@@ -19,7 +22,7 @@ import {
   type ReponseOutil,
 } from "../sortie/index.js";
 import { BUDGET_TENTATIVES_OUTIL, DEADLINE_OUTIL_MS } from "./constantes.js";
-import { REGISTRE_SERVICES, SCHEMAS_ENTREE_OUTILS, SCHEMAS_SORTIE_OUTILS } from "./registre.js";
+import { REGISTRE_SERVICES, SCHEMAS_ENTREE_OUTILS, SCHEMAS_SORTIE_OUTILS, type ServiceOutil } from "./registre.js";
 import type { DepsProcessus, OptionsExecution, SessionMcp } from "./types.js";
 import { creerCompteursAppel, envelopperHookToken, envelopperTransport } from "./wrappers.js";
 import { PLAFOND_SORTIE_OCTETS } from "../sortie/plafonds.js";
@@ -34,6 +37,100 @@ async function lireIdentiteGenerationLocale(deps: DepsProcessus): Promise<number
     empreinteClientId: store.empreinteClient,
   });
   return enregistrement?.generation ?? 0;
+}
+
+/**
+ * Étapes 5 à 8 du pipeline (D-T12-3, 07 §4), communes à `executerOutilMetier` (`tools/call`) et à
+ * `lireRessourceDossier` (`resources/read`, D-T12-13) : `ExecutionContext` (budget, deadline,
+ * génération, signal), `ContexteHttp`, wrappers de comptage, appel du **seul** service reçu,
+ * lecture de `quota_*`, enveloppe, politique de sortie, validation du schéma de sortie et
+ * plafonds. Retourne l'enveloppe finale validée ; la sérialisation finale (`ReponseOutil` pour un
+ * outil, texte JSON pour une ressource) reste au choix de l'appelant.
+ */
+export async function executerServiceDossier<T>(
+  deps: DepsProcessus,
+  options: OptionsExecution,
+  debut: Date,
+  dossier: Dossier,
+  service: ServiceOutil,
+  entree: unknown,
+  schemaSortie: z.ZodType,
+  nomPourErreur: string,
+): Promise<Enveloppe<T>> {
+  // 5. `ExecutionContext` : budget et deadline fixes, génération lue localement, signal de l'appel.
+  const executionContext: ExecutionContext = {
+    profil: deps.config.profil,
+    environnement: deps.config.environnement,
+    identiteGeneration: await lireIdentiteGenerationLocale(deps),
+    dossier: dossier.id,
+    budgetRestant: BUDGET_TENTATIVES_OUTIL,
+    deadline: new Date(debut.getTime() + DEADLINE_OUTIL_MS),
+    signal: options.signal ?? SIGNAL_JAMAIS_ANNULE,
+  };
+
+  // 6. `ContexteHttp` depuis l'abonnement de la famille du dossier résolu.
+  const abonnement = deps.config.abonnementPourFamille(dossier.famille);
+  const contexteHttp: ContexteHttp = {
+    environnement: deps.config.environnement,
+    famille: dossier.famille,
+    dossierId: dossier.id,
+    subscriptionKey: abonnement.cle,
+    groupeQuota: abonnement.groupeQuota,
+  };
+
+  // Wrappers par appel (D-T12-6) : comptent les départs de transport et les tentatives auth.
+  const compteurs = creerCompteursAppel();
+  const depsService: DepsService = {
+    http: {
+      ...deps.http,
+      transport: envelopperTransport(deps.http.transport, compteurs),
+      hookToken: envelopperHookToken(deps.http.hookToken, compteurs),
+    },
+    scan: { ...deps.scan, plafondOctetsResultats: PLAFOND_SORTIE_OCTETS },
+    clock: deps.clock,
+  };
+  const ctxService: ContexteService = { execution: executionContext, http: contexteHttp, dossier };
+
+  // 7. Appel du **seul** service reçu (sélectionné par l'appelant dans son registre).
+  const resultatService = await service(depsService, ctxService, entree);
+
+  // `meta.quota_*` lu après le service (D-T12-6) : `null` et avertissement si la lecture échoue.
+  let quotaJourRestant: number | null = null;
+  let quotaUtilisable: number | null = null;
+  let quotaEstime: boolean | null = null;
+  const avertissementsSupplementaires: string[] = [];
+  try {
+    const statut = await deps.http.quota.getStatut(contexteHttp.groupeQuota);
+    quotaJourRestant = statut.quotaJourRestant;
+    quotaUtilisable = statut.quotaUtilisable;
+    quotaEstime = statut.quotaEstime;
+  } catch {
+    avertissementsSupplementaires.push("Lecture du quota impossible : `quota_*` à `null`.");
+  }
+
+  const fin = deps.clock.now();
+  const enveloppeBrute = construireEnveloppe(resultatService, {
+    mode: options.mode,
+    observeA: fin.toISOString(),
+    dureeMs: fin.getTime() - debut.getTime(),
+    appelsApi: compteurs.appelsApi,
+    appelsAuth: compteurs.appelsAuth,
+    quotaJourRestant,
+    quotaUtilisable,
+    quotaEstime,
+    avertissementsSupplementaires,
+  });
+
+  // 8. Politique de sortie, puis validation du schéma de sortie, puis plafonds.
+  const enveloppeMasquee = appliquerPolitiqueSortie(enveloppeBrute, options.politique);
+  const schemaEnveloppe = enveloppeSchema(schemaSortie);
+  const parse = schemaEnveloppe.safeParse(enveloppeMasquee);
+  if (!parse.success) {
+    throw new Error(`Enveloppe de sortie invalide pour \`${nomPourErreur}\` (schéma de sortie non respecté).`);
+  }
+  const enveloppeValidee = parse.data as Enveloppe<T>;
+  verifierPlafondFiche(enveloppeValidee);
+  return verifierPlafondFinal(enveloppeValidee);
 }
 
 /**
@@ -68,86 +165,21 @@ export async function executerOutilMetier(
       entree.dossier !== undefined ? { dossier: entree.dossier } : {},
     );
 
-    // 5. `ExecutionContext` : budget et deadline fixes, génération lue localement, signal de l'appel.
-    const executionContext: ExecutionContext = {
-      profil: deps.config.profil,
-      environnement: deps.config.environnement,
-      identiteGeneration: await lireIdentiteGenerationLocale(deps),
-      dossier: contexteDossier.dossier.id,
-      budgetRestant: BUDGET_TENTATIVES_OUTIL,
-      deadline: new Date(debut.getTime() + DEADLINE_OUTIL_MS),
-      signal: options.signal ?? SIGNAL_JAMAIS_ANNULE,
-    };
+    // 5 à 8. Pipeline commun (D-T12-4) : `ExecutionContext`, `ContexteHttp`, appel du **seul**
+    // service du registre correspondant à cet outil, enveloppe, politique de sortie, validation
+    // du schéma de sortie et plafonds.
+    const enveloppeFinale = await executerServiceDossier(
+      deps,
+      options,
+      debut,
+      contexteDossier.dossier,
+      REGISTRE_SERVICES[outil],
+      entree,
+      SCHEMAS_SORTIE_OUTILS[outil],
+      outil,
+    );
 
-    // 6. `ContexteHttp` depuis l'abonnement de la famille du dossier résolu.
-    const abonnement = deps.config.abonnementPourFamille(contexteDossier.dossier.famille);
-    const contexteHttp: ContexteHttp = {
-      environnement: deps.config.environnement,
-      famille: contexteDossier.dossier.famille,
-      dossierId: contexteDossier.dossier.id,
-      subscriptionKey: abonnement.cle,
-      groupeQuota: abonnement.groupeQuota,
-    };
-
-    // Wrappers par appel (D-T12-6) : comptent les départs de transport et les tentatives auth.
-    const compteurs = creerCompteursAppel();
-    const depsService: DepsService = {
-      http: {
-        ...deps.http,
-        transport: envelopperTransport(deps.http.transport, compteurs),
-        hookToken: envelopperHookToken(deps.http.hookToken, compteurs),
-      },
-      scan: { ...deps.scan, plafondOctetsResultats: PLAFOND_SORTIE_OCTETS },
-      clock: deps.clock,
-    };
-    const ctxService: ContexteService = {
-      execution: executionContext,
-      http: contexteHttp,
-      dossier: contexteDossier.dossier,
-    };
-
-    // 7. Appel du **seul** service du registre correspondant à cet outil.
-    const service = REGISTRE_SERVICES[outil];
-    const resultatService = await service(depsService, ctxService, entree);
-
-    // `meta.quota_*` lu après le service (D-T12-6) : `null` et avertissement si la lecture échoue.
-    let quotaJourRestant: number | null = null;
-    let quotaUtilisable: number | null = null;
-    let quotaEstime: boolean | null = null;
-    const avertissementsSupplementaires: string[] = [];
-    try {
-      const statut = await deps.http.quota.getStatut(contexteHttp.groupeQuota);
-      quotaJourRestant = statut.quotaJourRestant;
-      quotaUtilisable = statut.quotaUtilisable;
-      quotaEstime = statut.quotaEstime;
-    } catch {
-      avertissementsSupplementaires.push("Lecture du quota impossible : `quota_*` à `null`.");
-    }
-
-    const fin = deps.clock.now();
-    const enveloppeBrute = construireEnveloppe(resultatService, {
-      mode: options.mode,
-      observeA: fin.toISOString(),
-      dureeMs: fin.getTime() - debut.getTime(),
-      appelsApi: compteurs.appelsApi,
-      appelsAuth: compteurs.appelsAuth,
-      quotaJourRestant,
-      quotaUtilisable,
-      quotaEstime,
-      avertissementsSupplementaires,
-    });
-
-    // 8. Politique de sortie, puis validation du schéma de sortie, puis plafonds, puis sérialisation.
-    const enveloppeMasquee = appliquerPolitiqueSortie(enveloppeBrute, options.politique);
-    const schemaSortie = enveloppeSchema(SCHEMAS_SORTIE_OUTILS[outil]);
-    const parse = schemaSortie.safeParse(enveloppeMasquee);
-    if (!parse.success) {
-      throw new Error(`Enveloppe de sortie invalide pour \`${outil}\` (schéma de sortie non respecté).`);
-    }
-    const enveloppeValidee = parse.data as typeof enveloppeBrute;
-    verifierPlafondFiche(enveloppeValidee);
-    const enveloppeFinale = verifierPlafondFinal(enveloppeValidee);
-
+    // 9. Sérialisation du résultat MCP, propre à un outil.
     return serialiserSucces(enveloppeFinale);
   } catch (erreur) {
     try {

@@ -118,8 +118,12 @@ const ResultatBalanceComptesSchema = z.object({
   devise: z.null(),
 });
 
-/** `exercices` (D-T11-16, compta/exercices.ts) : résultat unique `{exercices}`, pas un tableau direct (07 §6). */
-const ResultatExercicesSchema = z.object({ exercices: z.array(ExerciceSchema) });
+/**
+ * `exercices` (D-T11-16, compta/exercices.ts) : résultat unique `{exercices}`, pas un tableau
+ * direct (07 §6). Exporté : réutilisé tel quel par `ebp://{dossier}/exercices`
+ * (`mcp/serveur/ressources.ts`, D-T12-13) plutôt que dupliqué.
+ */
+export const ResultatExercicesSchema = z.object({ exercices: z.array(ExerciceSchema) });
 
 /**
  * Schémas de sortie des 14 outils (D-T12-3, étape 8), un seul par outil, réutilisant les schémas
