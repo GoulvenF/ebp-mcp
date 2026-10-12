@@ -48,7 +48,7 @@ Aucun scénario de la liste n'est non couvert.
   4. **Une erreur de capacité** : `rechercher_articles` appelé sur `demo-cpt` (famille `hubbix-compta`) → `Tool Error`, `code: "UNSUPPORTED_CAPABILITY"`, message explicite (« n'est pas disponible pour un dossier de la famille `hubbix-compta` ») — capture `04-erreur-capacite.png`. Confirmé symétriquement en sonde directe avec `balance_comptes` sur `demo-gc` (même code d'erreur).
   5. **Un appel GC** : `rechercher_articles` sur `demo-gc` → articles synthétiques (`ART0001`/`ART0002`/`ART0003`) — capture `05-gc-rechercher-articles.png`.
   6. **`resources/list` / `resources/read`** : panneau Resources, 7 URIs (`ebp://dossiers`, `ebp://glossaire`, `ebp://demo-cpt/exercices`, `ebp://demo-cpt/journaux`, `ebp://demo-cpt/plan-comptable`, `ebp://demo-cpt/taux-tva`, `ebp://demo-gc/taux-tva`) ; lecture de `ebp://glossaire` affichée — capture `06-resource-glossaire.png`. Confirmé en sonde directe (`resources/list` et `resources/read` répondent sans erreur).
-  7. **Reprise par curseur** : **non capturée manuellement dans l'Inspector** pendant cette session (session Inspector limitée aux 6 étapes ci-dessus). La reprise par curseur est prouvée par le test automatisé `tests/mcp/acceptance/scan-transverse.test.ts` (second `tools/call` avec `curseur: enveloppe1.pagination.curseur!`, reprise exacte des 10 éléments restants sans perte ni doublon) et confirmée en sonde directe hors Inspector (`pagination.curseur` non nul renvoyé après une page coupée). **Défaut de preuve, non bloquant** : à refaire manuellement dans l'Inspector lors d'une prochaine recette si l'exhaustivité stricte du parcours est requise.
+  7. **Reprise par curseur** : rejouée manuellement dans l'Inspector — capture `07-page1-curseur.png`. `rechercher_articles` sur `demo-gc` avec `limite: 3` renvoie 3 articles (`ART0001`–`ART0003`), `pagination.hasMore: true`, `curseur: "a6b5626c6e5c7dc974512b1a3dfb1423"`. Un second appel avec ce `curseur` renvoie exactement les 3 articles suivants (`ART0004`–`ART0006`), sans perte ni doublon — capture `07-reprise-curseur.png`. Confirmé en complément par le test automatisé `tests/mcp/acceptance/scan-transverse.test.ts` (second `tools/call` avec `curseur: enveloppe1.pagination.curseur!`, reprise exacte des 10 éléments restants sans perte ni doublon).
 - `README.md` « MCP Inspector local » (ligne 86–90) : la commande documentée (`npx @modelcontextprotocol/inspector node dist/cli.js serve --mock`) reste correcte ; elle ne fixe pas de ports. Sur cet hôte partagé, `CLIENT_PORT`/`SERVER_PORT` doivent être fixés dans 4100–4109 — non modifié dans le README car c'est une contrainte de l'hôte de recette, pas du produit.
 
 ## 4. `npm pack --dry-run` inspecté
@@ -66,14 +66,14 @@ Aucun scénario de la liste n'est non couvert.
 
 | Axx | Résolution | Test/code cité |
 |---|---|---|
-| A01 | Résolu | `src/domain/decimal.ts`, `src/services/commun/capacites.ts`, `src/fixtures/manifeste.ts` ; règles métier 07 §8 implémentées (acomptes bloqués sans rapprochement — A04). |
+| A01 | Différé T22 / E14 | Le CA, les acomptes et la règle « facture 100 + avoir −20 → 80 » relèvent de T22 (07 §8 « CA (ultérieur) », 08 T22, preuve E14 de 09) ; aucun outil v0.1 n'additionne factures et avoirs. Pour v0.1, seul ceci est prouvé : un avoir au montant source déjà négatif est conservé tel quel, non réinversé — `tests/adapters/hubbix-gescom/documents.test.ts`, it « avoir au montant source déjà négatif : conservé tel quel, `reste_du` du document ». |
 | A02 | Résolu | `src/domain/decimal.ts` (bibliothèque décimale), montants en chaînes JSON ; `src/fixtures/manifeste.ts` provenance fixtures. |
 | A03 | Résolu (capacité désactivée) | `src/adapters/compta/capacites.ts`, `src/services/commun/capacites.ts` ; `tests/services/commun/capacites.test.ts` — échéancier comptable non annoncé comme capacité CPT en v0.1. |
 | A04 | Résolu | `src/services/commun/capacites.ts` ; `tests/services/commun/capacites.test.ts` — identifiants qualifiés par famille/dossier, pas de bascule silencieuse. |
 | A05 | Résolu | `src/auth/cycle.ts`, `src/auth/store-generations.ts` ; `tests/auth/crash-refresh.test.ts`, `tests/quota/multi-processus.test.ts` — relecture sous lock, génération durable, pas de rejeu. |
 | A06 | Résolu | `src/auth/pkce.ts`, `src/auth/callback-loopback.ts`, `src/auth/login.ts` ; `tests/auth/login.test.ts` — PKCE S256 complet, pas de downgrade. URI exacte/preuve préprod restent E01 (09), hors v0.1. |
 | A07 | Résolu | `src/quota/*` (groupe de quota persistant, lock interprocessus) ; `tests/quota/multi-processus.test.ts`, `tests/quota/profils-ab.test.ts`. |
-| A08 | Résolu structurellement | Aucun des 17 outils n'accepte de paramètre URL libre (confirmé par inspection du schéma réel `tools/list`, section 3) ; chaque route est câblée en dur par adaptateur typé (`src/adapters/hubbix-compta/`, `src/adapters/hubbix-gescom/`). Pas de test dédié « redirection refusée » identifié — limite à noter, non bloquante (pas de tool générique HTTP exposé). |
+| A08 | Résolu | Aucun des 17 outils n'accepte de paramètre URL libre (confirmé par inspection du schéma réel `tools/list`, section 3) ; chaque route est câblée en dur par adaptateur typé (`src/adapters/compta/`, `src/adapters/hubbix-gescom/`). Redirection HTTP jamais suivie : `src/http/transport-fetch.ts` (`redirect: "manual"`), test dédié `tests/http/transport-fetch.test.ts`, it « critère #3 : redirection vers une autre origine jamais suivie, la cible ne reçoit aucune requête » ; routes typées et hôte verrouillés par `tests/http/url.test.ts` et `tests/http/registre.test.ts`. |
 | A09 | Résolu | `src/mcp/sortie/politique-pii.ts` ; `tests/mcp/sortie/politique-pii.test.ts` — politique centrale sur enveloppe, claims, erreurs, avertissements cache ; `inclure_brut` et exports binaires incompatibles avec le mode masquage (cf. limite documentée section 6). |
 | A10 | Résolu | `src/domain/date.ts` ; `tests/domain-date.test.ts` — `+1` jour civil, bornes et date future testées. |
 | A11 | Résolu | `src/pagination/scan.ts` ; `tests/mcp/acceptance/scan-transverse.test.ts` — curseur en entrée/sortie, `total`/`total_source` distincts, reprise sans perte. |
@@ -98,16 +98,15 @@ Aucun Axx sans ligne.
 ## 6. Restrictions non validées (v0.1)
 
 - **E01–E15 (09)** : aucune n'est levée par cette recette (mocks uniquement). États inchangés : E01/E02/E03/E04/E05/E08/E09/E10/E11/E14 `inconnu`, E06 `documenté en partie`, E07 `inconnu` (sous-questions wrapper/`types`/sémantique filtre comptable toujours ouvertes), E12 `portée standard non prouvée`, E13 `documenté, non testé`, E15 `à vérifier`.
+- **CA et acomptes (A01, T22)** : aucun calcul de chiffre d'affaires ni de rapprochement acompte/facture en v0.1. Seul le comportement d'un avoir déjà négatif (conservé tel quel) est prouvé. Reporté à T22, preuve E14.
 - **Limite PII connue** : un e-mail (ou IBAN/téléphone) présent dans un libellé EBP n'est **pas** masqué — seuls les textes produits par le serveur (messages d'erreur, avertissements) passent par la politique PII. Preuve : `tests/mcp/sortie/politique-pii.test.ts`, cas « un libelle EBP qui contient un email n'est pas modifié ». Limite documentée, acceptée, non corrigée en v0.1.
 - **Absence de validation live** : zéro accès réseau EBP réel pendant toute la recette (gate réseau T14-1 active en continu) ; aucune assertion de compatibilité API n'est faite.
-- **A08** : pas de test dédié démontrant le refus explicite d'une redirection HTTP (la garantie vient de l'absence structurelle de tout outil acceptant une URL — voir section 5).
-- **Parcours Inspector — reprise par curseur** : non rejouée manuellement dans l'UI Inspector pendant cette session (section 3), seulement prouvée par test automatisé et sonde directe.
 - **Sourcemaps** : chemins relatifs vers `src/` visibles dans `dist/**/*.js.map` du tarball ; décision de les exclure ou non différée à T24 (section 4).
 - **Pas de publication npm, pas d'assertion « API compatible »** : conforme au périmètre de cette tâche.
 
 ## 7. Défauts constatés pendant cette recette
 
-**Aucun défaut bloquant ou non bloquant constaté.** Tous les scénarios de la table de section 2 sont passés sans écart entre attendu et observé. Les deux points notés en section 6 (A08 sans test dédié, reprise par curseur non rejouée manuellement dans l'Inspector) sont des limites de preuve documentées, pas des écarts entre comportement attendu et observé du produit — ils ne sont donc pas qualifiés de défaut.
+**Aucun défaut bloquant ou non bloquant constaté.** Tous les scénarios de la table de section 2 sont passés sans écart entre attendu et observé. Les points notés en section 6 (périmètre CA/acomptes différé à T22, restrictions E01–E15, limite PII sur libellés EBP, absence de validation live, sourcemaps) sont des limites de périmètre ou de preuve documentées, pas des écarts entre comportement attendu et observé du produit — ils ne sont donc pas qualifiés de défaut.
 
 ## Conclusion
 
