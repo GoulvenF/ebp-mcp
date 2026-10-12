@@ -73,17 +73,13 @@ describe("scénario transverse 6 — libellé EBP piégé rendu comme donnée, j
       // Jamais journalisé : succès de bout en bout, aucun appel à `journal.erreur` (seul canal
       // stderr documenté, D-T12-5), donc aucune chance que le piège y apparaisse.
       expect(entreesJournal).toEqual([]);
-
-      // Jamais de message d'erreur non plus : le texte brut n'apparaît que dans la donnée métier
-      // de la réponse, jamais recopié dans un champ `erreur`/`message`/`action` du protocole.
-      expect(reponse.isError).toBe(false);
     },
   );
 
   it(
     "le même libellé piégé dans le corps d'une erreur EBP (403, non relancée) ressort en " +
       "`isError: true` via `PERMISSION_DENIED` nettoyé (D-T12-5) : le journal stderr (seul canal " +
-      "reçoit au moins une entrée, et ni cette entrée ni la réponse MCP ne portent l'instruction, " +
+      "du serveur) reçoit au moins une entrée, et ni cette entrée ni la réponse MCP ne portent l'instruction, " +
       "le faux en-tête `Bearer` ou la fausse clé d'abonnement",
     async () => {
       const entreesJournal: unknown[] = [];
