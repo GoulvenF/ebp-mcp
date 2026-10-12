@@ -2,6 +2,8 @@
 
 **Statut : aucune validation EBP réelle réalisée.** Une proposition acceptée fixe les choix du projet ; elle ne résout pas les inconnues fournisseur.
 
+**Recette T14 (v0.1 sur mocks) réalisée le 2026-10-12** sur le SHA `f19f3dd52bb36c8ac95f1498a07b6bd9fab2c8e5` : voir [`docs/evidence/T14-recette-v0.1.md`](evidence/T14-recette-v0.1.md) (gate commune, scénarios transverses, parcours Inspector, tarball, traçabilité A01–A26, restrictions) et [`docs/evidence/T14-matrice-capacites.md`](evidence/T14-matrice-capacites.md). Aucune ligne de ce registre n'est levée par cette recette.
+
 ## Registre des preuves nécessaires
 
 | ID | Question | Preuve minimale attendue | Consommateur | État |

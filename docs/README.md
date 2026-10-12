@@ -21,6 +21,7 @@ Transfert terminé : [index Paperclip](paperclip-index.md), 24 tâches dont T01�
 | [09 — Preuves](09-preuves-et-recette.md) | Questions EBP et gates de recette |
 | [10 — Socle](10-socle-versions.md) | Décision D09 : versions figées du socle et bibliothèque décimale |
 | [Index Paperclip](paperclip-index.md) | Projet, workspace, correspondance Txx ↔ tâches et dépendances |
+| [docs/evidence/](evidence/) | Preuves de recette (T14 : rapport, matrice de capacités) |
 
 ## Précédence
 
