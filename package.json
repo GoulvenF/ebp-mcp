@@ -12,10 +12,14 @@
   "files": [
     "dist"
   ],
+  "bin": {
+    "ebp-mcp": "dist/cli.js"
+  },
   "scripts": {
     "pretypecheck": "npm run build",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "postbuild": "chmod +x dist/cli.js",
     "pretest": "npm run build",
     "test": "vitest run"
   },

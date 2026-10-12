@@ -151,6 +151,8 @@ T04–T08 demandent une revue attentive même si le code est confié à un agent
 
 **Acceptation :** process CLI démarré dans config temporaire : démarrage sans token, login mock, add avec validation distante simulée, list, serve, remove et logout ; mode mock ne peut émettre vers internet et est visible dans meta ; aucune sortie log sur stdout en serve ; arrêt SIGTERM ferme listener et attentes. **Hors périmètre :** envoi d'email, installation globale ou publication.
 
+**État : livré** (T13-1 mode mock #26, T13-2 persistance des dossiers #25, T13-3 binaire/signaux/parcours hors ligne GOU-373, décisions D-T13-x en 07 §12).
+
 ## T14 — Recette intégrée de la version mocks
 
 **But :** clôturer v0.1 sur des preuves croisées. **Dépendance :** T13. **Références :** A01–A26, 09.

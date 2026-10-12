@@ -7,7 +7,7 @@ Mise en place vérifiée le 2026-10-06, après validation de Goulven.
 - [Dépôt GitHub](https://github.com/GoulvenF/ebp-mcp) — public, branche `main`, licence MIT.
 - [Corpus validé](https://github.com/GoulvenF/ebp-mcp/tree/b70b71b0792ec1bdc28d86ef0e642899464e85b5) — commit `b70b71b0792ec1bdc28d86ef0e642899464e85b5`.
 - Workspace primaire : `38307d5e-670c-49a3-83cf-e63676064229`, source Git `https://github.com/GoulvenF/ebp-mcp`, référence `main`, checkout géré par Paperclip.
-- Exécution prévue dans des worktrees isolés. À l'import initial, les 24 tâches étaient non assignées en backlog. T01–T14 ont ensuite été attribuées au Lead Tech à la demande de Goulven ; T15–T24 restent non assignées. T01 a été lancée le 2026-10-06 ; T02–T14 sont en statut `blocked` avec leurs dépendances enregistrées. Les statuts courants se lisent dans Paperclip. T12 est livré (08).
+- Exécution prévue dans des worktrees isolés. À l'import initial, les 24 tâches étaient non assignées en backlog. T01–T14 ont ensuite été attribuées au Lead Tech à la demande de Goulven ; T15–T24 restent non assignées. T01 a été lancée le 2026-10-06 ; T02–T14 sont en statut `blocked` avec leurs dépendances enregistrées. Les statuts courants se lisent dans Paperclip. T12 et T13 sont livrées (08).
 
 ## Correspondance des tâches
 
