@@ -7,6 +7,7 @@ import {
   creerOperationsFichierNode,
   creerStoreJson,
   dateCivileDansFuseau,
+  DEADLINE_OUTIL_MS,
   rechercherTiers,
   TYPE_QUOTA,
   validerGroupe,
@@ -15,8 +16,10 @@ import type { EtatQuotaPersistant, ExecutionContext } from "../../../dist/index.
 import { creerHorlogeControlee } from "../../auth/fixtures.js";
 import {
   creerTransportInterdit,
+  creerTransportPersonnalise,
   demarrerClientPersonnalise,
   DOSSIER_CPT,
+  reponseJson,
   type ContexteClientPersonnalise,
 } from "./fixtures.js";
 import { ctxDe, depsDe } from "../../services/compta/fixtures.js";
@@ -84,6 +87,57 @@ describe("scénario transverse 3 — réserve de quota déjà atteinte avant le 
 });
 
 describe("scénario transverse 4 — budget ou deadline déjà épuisés avant le premier résultat (07 §4/§5)", () => {
+  it(
+    "deadline de l'outil dépassée pendant la lecture de la première page (0 match) : la page " +
+      "suivante est empêchée par `budgetOuDeadlineEpuises` avant tout appel transport supplémentaire " +
+      "— partiel explicite (raison_arret: \"deadline\"), jamais un succès vide exhaustif. Le cas " +
+      "symétrique du budget (0 appel avant tout résultat) est déjà prouvé au niveau MCP par le " +
+      "scénario transverse 1 (`scan-transverse.test.ts`, 30 départs HTTP, raison_arret: \"budget\")",
+    async () => {
+      // Transport contrôlé : la toute première page (skip 0, 100 éléments, aucun match pour le
+      // filtre) avance l'horloge réelle de la pile (`pile.clock`, l'horloge qui sert à calculer
+      // `deadline` dans `src/mcp/execution/pipeline.ts`) au-delà de `DEADLINE_OUTIL_MS` avant de
+      // répondre. `hasMore` reste vrai (`totalRecords` très supérieur à skip+take), donc `scanner`
+      // tente de lire une seconde page ; `lirePageGardee` la refuse avant tout départ réseau.
+      const transport = creerTransportPersonnalise((spec, appel) => {
+        const url = new URL(spec.url);
+        const skip = Number.parseInt(url.searchParams.get("skip") ?? "0", 10);
+        const take = Number.parseInt(url.searchParams.get("take") ?? "100", 10);
+        if (appel === 1) {
+          contexte!.pile.clock.avancer(DEADLINE_OUTIL_MS + 1);
+        }
+        const data = Array.from({ length: take }, (_, i) => ({
+          uuid: `tiers-deadline-${skip + i}`,
+          name: `Tiers synthétique ${skip + i}`,
+          number: `9${String(skip + i).padStart(6, "0")}`,
+          vatNumber: null,
+          siret: null,
+          isActive: true,
+          types: null,
+        }));
+        return reponseJson(200, { data, totalRecords: 100_000_000 });
+      });
+
+      contexte = await demarrerClientPersonnalise({ transport });
+      const reponse = await contexte.client.callTool({
+        name: "rechercher_tiers",
+        arguments: { dossier: DOSSIER_CPT, texte: "ZZZ-NE-CORRESPOND-JAMAIS" },
+      });
+
+      expect(reponse.isError).toBeFalsy();
+      const enveloppe = reponse.structuredContent as unknown as Enveloppe;
+      expect(enveloppe.meta.completude).toBe("partielle");
+      expect(enveloppe.meta.raison_arret).toBe("deadline");
+      expect(enveloppe.meta.approximatif).toBe(true);
+      expect(enveloppe.resultats).toEqual([]);
+      // Exactement 1 départ HTTP (la première page, sans match) : la deadline dépassée empêche la
+      // seconde page avant tout appel supplémentaire — nombre écrit à la main.
+      expect(transport.appels).toHaveLength(1);
+    },
+  );
+});
+
+describe("scénario transverse 4 (complément service) — budget ou deadline déjà épuisés dès l'entrée (07 §4/§5)", () => {
   it(
     "ExecutionContext.budgetRestant === 0 dès l'entrée du service : partiel explicite " +
       "(raison_arret: \"budget\"), 0 appel transport, jamais un succès vide exhaustif",

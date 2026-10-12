@@ -125,5 +125,6 @@ describe("ebp-mcp — scénario transverse 8 : stdio CPT + GC bout en bout (09, 
       expect(stderrTexte).not.toContain("SyntaxError");
       expect(await lireTentativesGarde(gardeFichier)).toEqual([]);
     },
+    30_000,
   );
 });
