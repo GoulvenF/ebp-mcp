@@ -111,47 +111,90 @@ describe("auth/crash-refresh (scénario 1 de 09 : crash réel pendant refresh)",
       const { signal } = await finVictime;
       expect(signal).toBe("SIGKILL");
 
-      // L'observateur suit immédiatement, avec sa propre deadline volontairement courte (07 §3) :
-      // le marqueur `refreshing` est encore récent (bien en-deçà de DELAI_ABANDON_REFRESH_MS), donc
-      // il n'est jamais rejoué et l'observateur n'émet lui-même aucune requête.
-      const cheminResultatObservateur = join(dir, "resultat-observateur.json");
-      const cheminLogTransportObservateur = join(dir, "transport-observateur.log");
-      const { attendre: finObservateur } = lancerScript([
+      // Marqueur `refreshing` encore récent juste après le kill : aucun processus ne doit le
+      // rejouer (vérifié avant le passage par la branche d'abandon, qui le réécrit).
+      const brutTokensApresKill = await readFile(cheminTokens, "utf8");
+      const enveloppeApresKill = JSON.parse(brutTokensApresKill) as {
+        type: string;
+        data: EnregistrementToken;
+      };
+      expect(enveloppeApresKill.data.state).toBe("refreshing");
+
+      // Premier observateur : horloge décalée de DELAI_ABANDON_REFRESH_MS + 1000 ms (voir
+      // enfant-crash-refresh.mjs), donc le marqueur `refreshing` de la victime est vu comme dépassé.
+      // C'est la branche `abandonne` de 07 §3 (AUTH_REQUIRED explicite), jamais une deadline d'appel
+      // expirée : aucune requête n'est émise et l'ancien refresh token n'est jamais rejoué.
+      const cheminResultatAbandon = join(dir, "resultat-observateur-abandon.json");
+      const cheminLogTransportAbandon = join(dir, "transport-observateur-abandon.log");
+      const { attendre: finAbandon } = lancerScript([
         dir,
         String(port),
-        "observateur",
-        cheminResultatObservateur,
-        cheminLogTransportObservateur,
+        "observateur-abandon",
+        cheminResultatAbandon,
+        cheminLogTransportAbandon,
       ]);
-      await finObservateur;
+      await finAbandon;
 
-      const resultatObservateur = JSON.parse(await readFile(cheminResultatObservateur, "utf8")) as {
+      const resultatAbandon = JSON.parse(await readFile(cheminResultatAbandon, "utf8")) as {
         ok: boolean;
         code: string | null;
+        message: string;
       };
-      expect(resultatObservateur.ok).toBe(false);
-      expect(resultatObservateur.code).toBe("AUTH_REQUIRED");
+      expect(resultatAbandon.ok).toBe(false);
+      expect(resultatAbandon.code).toBe("AUTH_REQUIRED");
+      expect(resultatAbandon.message).toContain("Rafraîchissement précédent abandonné");
 
-      // Zéro requête émise par l'observateur (il n'est jamais devenu rafraîchisseur).
-      await expect(readFile(cheminLogTransportObservateur, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+      // Zéro requête émise par ce premier observateur.
+      await expect(readFile(cheminLogTransportAbandon, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
 
       // Exactement une requête reçue par le faux serveur, et elle porte l'ancien refresh token —
       // jamais un second rejeu, quel que soit le nombre de processus qui observent ensuite.
-      const requetesRecues = (await readFile(cheminRequetesRecues(), "utf8")).trim().split("\n").filter(Boolean);
-      expect(requetesRecues).toHaveLength(1);
-      const champs = new URLSearchParams(requetesRecues[0]);
+      const requetesApresAbandon = (await readFile(cheminRequetesRecues(), "utf8")).trim().split("\n").filter(Boolean);
+      expect(requetesApresAbandon).toHaveLength(1);
+      const champs = new URLSearchParams(requetesApresAbandon[0]);
       expect(champs.get("refresh_token")).toBe(ancienRefresh);
       expect(champs.get("grant_type")).toBe("refresh_token");
 
-      // Stockage cohérent : JSON entier et valide, jamais tronqué par le SIGKILL, marqueur
-      // `refreshing` de la victime laissé tel quel (le refresh token n'a pas été effacé, pas rejoué).
-      const brutTokens = await readFile(cheminTokens, "utf8");
-      const enveloppe = JSON.parse(brutTokens) as { storeVersion: number; type: string; data: EnregistrementToken };
-      expect(enveloppe.type).toBe("tokens");
-      const token = enveloppe.data;
-      expect(token.state).toBe("refreshing");
-      expect(token.refreshToken).toBe(ancienRefresh);
-      expect(token.generation).toBe(2);
+      // Stockage cohérent : JSON entier et valide, jamais tronqué par le SIGKILL, basculé en
+      // `reauth_required` par la branche d'abandon, refresh token et génération inchangés.
+      const brutTokensApresAbandon = await readFile(cheminTokens, "utf8");
+      const enveloppeApresAbandon = JSON.parse(brutTokensApresAbandon) as {
+        storeVersion: number;
+        type: string;
+        data: EnregistrementToken;
+      };
+      expect(enveloppeApresAbandon.type).toBe("tokens");
+      const tokenApresAbandon = enveloppeApresAbandon.data;
+      expect(tokenApresAbandon.state).toBe("reauth_required");
+      expect(tokenApresAbandon.refreshToken).toBe(ancienRefresh);
+      expect(tokenApresAbandon.generation).toBe(2);
+
+      // Second observateur, horloge normale : le stockage est déjà `reauth_required`, donc
+      // AUTH_REQUIRED par la branche `reauth` (07 §3), toujours sans aucune requête émise.
+      const cheminResultatReauth = join(dir, "resultat-observateur-reauth.json");
+      const cheminLogTransportReauth = join(dir, "transport-observateur-reauth.log");
+      const { attendre: finReauth } = lancerScript([
+        dir,
+        String(port),
+        "observateur-reauth",
+        cheminResultatReauth,
+        cheminLogTransportReauth,
+      ]);
+      await finReauth;
+
+      const resultatReauth = JSON.parse(await readFile(cheminResultatReauth, "utf8")) as {
+        ok: boolean;
+        code: string | null;
+        message: string;
+      };
+      expect(resultatReauth.ok).toBe(false);
+      expect(resultatReauth.code).toBe("AUTH_REQUIRED");
+      expect(resultatReauth.message).toContain("Réauthentification requise");
+      await expect(readFile(cheminLogTransportReauth, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+
+      // Toujours une seule requête reçue par le faux serveur au total.
+      const requetesApresReauth = (await readFile(cheminRequetesRecues(), "utf8")).trim().split("\n").filter(Boolean);
+      expect(requetesApresReauth).toHaveLength(1);
     },
     15000,
   );

@@ -10,10 +10,11 @@ const SCRIPT_ENFANT = join(ICI, "enfant-admission-profil.mjs");
 
 const MIN_INTERVAL_MS = 100;
 const N = 3;
-/** `maxPerDay - reserve` fixé à exactement `2 * N` : la réserve est atteinte pile après les
- * admissions des deux profils, sans marge, pour prouver le refus du départ suivant. */
-const MAX_PER_DAY = 2 * N;
-const RESERVE = 0;
+/** `maxPerDay - reserve` fixé à exactement `2 * N`, avec une réserve non nulle : le refus du
+ * départ suivant vient de la réserve (07 §4 : « Réserve atteinte »), pas d'un plafond épuisé
+ * (`reserve = 0` ne distinguerait pas les deux causes). */
+const MAX_PER_DAY = 2 * N + 2;
+const RESERVE = 2;
 
 const TENANT_ID = "11111111-1111-4111-8111-111111111111";
 const DOMAIN_ID = "22222222-2222-4222-8222-222222222222";
@@ -136,8 +137,9 @@ describe("quota profils A/B (scénarios 2 et 3 de 09, 07 §4)", () => {
       // seulement une fois les deux processus d'admission terminés (le statut écrit par chacun en
       // fin de sa propre boucle ne reflète que son avancement local pendant que l'autre tourne
       // encore ; ici on relit après le `Promise.all`, avec 0 admission supplémentaire, pour un
-      // instantané stable du compteur partagé). Réserve atteinte ⇒ quotaJourRestant ==
-      // quotaUtilisable == 0 (reserve == 0 ici).
+      // instantané stable du compteur partagé). `consomme == 2N`, `maxPerDay == 2N + 2`,
+      // `reserve == 2` ⇒ quotaJourRestant == 2, quotaUtilisable == 0 : c'est la réserve qui ferme
+      // l'admission, pas le plafond `maxPerDay` (qui n'est pas encore atteint).
       const sortieInstantsALecture = join(dir, "instants-a-lecture.txt");
       const sortieStatutALecture = join(dir, "statut-a-lecture.json");
       const sortieInstantsBLecture = join(dir, "instants-b-lecture.txt");
@@ -148,7 +150,7 @@ describe("quota profils A/B (scénarios 2 et 3 de 09, 07 §4)", () => {
       const resultatB = JSON.parse(await readFile(sortieStatutBLecture, "utf8")) as ResultatEnfant;
       expect(resultatA.groupe).toBe("partage");
       expect(resultatB.groupe).toBe("partage");
-      expect(resultatA.statut).toEqual({ quotaJourRestant: 0, quotaUtilisable: 0, quotaEstime: true });
+      expect(resultatA.statut).toEqual({ quotaJourRestant: 2, quotaUtilisable: 0, quotaEstime: true });
       expect(resultatB.statut).toEqual(resultatA.statut);
 
       // Réserve atteinte : le processus suivant ne fait aucun départ supplémentaire, quel que soit
@@ -158,7 +160,7 @@ describe("quota profils A/B (scénarios 2 et 3 de 09, 07 §4)", () => {
       await lancerScript([dir, "a", "0", sortieInstantsASupp, sortieStatutASupp, "1"]);
       const resultatASupp = JSON.parse(await readFile(sortieStatutASupp, "utf8")) as ResultatEnfant;
       expect(resultatASupp.supplementaire).toEqual({ admis: false, code: "RESOLUTION_INCOMPLETE", raison: "quota" });
-      expect(resultatASupp.statutApresSupplementaire).toEqual({ quotaJourRestant: 0, quotaUtilisable: 0, quotaEstime: true });
+      expect(resultatASupp.statutApresSupplementaire).toEqual({ quotaJourRestant: 2, quotaUtilisable: 0, quotaEstime: true });
 
       const sortieInstantsBSupp = join(dir, "instants-b-supp.txt");
       const sortieStatutBSupp = join(dir, "statut-b-supp.json");
