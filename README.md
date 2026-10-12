@@ -34,7 +34,24 @@ npm ci              # installation reproductible depuis package-lock.json
 npm run typecheck   # tsc --noEmit sur src/ et tests/
 npm test            # vitest run (déclenche le build si nécessaire)
 npm run build       # tsc -p tsconfig.build.json → dist/
+npm run verify:pack # contrôle du tarball npm (après build)
 ```
+
+**Tests sans réseau.** `npm test` charge une garde réseau ([`tests/cli/garde-reseau.mjs`](tests/cli/garde-reseau.mjs))
+dans chaque worker vitest (`setupFiles`) et, via `NODE_OPTIONS=--import`, dans chaque processus Node
+enfant ([`tests/garde/global-setup.ts`](tests/garde/global-setup.ts)). Seul le loopback est permis ;
+toute autre émission (`fetch`, `net`, `tls`, `dns`) est bloquée et journalisée, et la suite échoue
+en fin d'exécution avec les cibles en cause, même si le test a avalé l'erreur. Preuve :
+`tests/garde/garde-globale.test.ts`.
+
+**Contrôle du tarball.** `npm run verify:pack` ([`scripts/verifier-paquet.mjs`](scripts/verifier-paquet.mjs))
+lance `npm pack --dry-run --json` et refuse le paquet si un fichier sort de `dist/**`, `package.json`,
+`README.md`, `LICENSE`, porte un nom sensible (`.env*`, `config.json`, `tokens.json`,
+`generations.json`, `*.pem`, `*.key`, `*.har`, fixtures de corpus, tests) ou contient un motif de
+secret (`Authorization: Bearer` avec valeur, JWT, clé privée PEM, `refresh_token`/`access_token`
+littéral, e-mail hors domaines d'exemple). Les refus citent fichier, ligne et règle, jamais la
+valeur. Les vrais positifs légitimes sont listés et justifiés dans `EXCEPTIONS`. La CI l'exécute
+après le build.
 
 ## Binaire `ebp-mcp`
 

@@ -21,7 +21,8 @@
     "build": "tsc -p tsconfig.build.json",
     "postbuild": "chmod +x dist/cli.js",
     "pretest": "npm run build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify:pack": "node scripts/verifier-paquet.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
