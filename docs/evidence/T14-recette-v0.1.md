@@ -97,7 +97,7 @@ Aucun Axx sans ligne.
 
 ## 6. Restrictions non validées (v0.1)
 
-- **E01–E15 (09)** : aucune n'est levée par cette recette (mocks uniquement). États inchangés : E01/E02/E03/E04/E05/E08/E09/E10/E11/E14 `inconnu`, E06 `documenté en partie`, E07 `inconnu` (sous-questions wrapper/`types`/sémantique filtre comptable toujours ouvertes), E12 `portée standard non prouvée`, E13 `documenté, non testé`, E15 `à vérifier`.
+- **E01–E15 (09)** : aucune n'est levée par cette recette (mocks uniquement). États inchangés : E01/E03/E04/E05/E08/E09/E10/E11/E14 `inconnu`, E02 `documenté, non testé`, E06 `documenté en partie`, E07 `inconnu` (sous-questions wrapper/`types`/sémantique filtre comptable toujours ouvertes), E12 `portée standard non prouvée`, E13 `documenté, non testé`, E15 `à vérifier`.
 - **CA et acomptes (A01, T22)** : aucun calcul de chiffre d'affaires ni de rapprochement acompte/facture en v0.1. Seul le comportement d'un avoir déjà négatif (conservé tel quel) est prouvé. Reporté à T22, preuve E14.
 - **Limite PII connue** : un e-mail (ou IBAN/téléphone) présent dans un libellé EBP n'est **pas** masqué — seuls les textes produits par le serveur (messages d'erreur, avertissements) passent par la politique PII. Preuve : `tests/mcp/sortie/politique-pii.test.ts`, cas « un libelle EBP qui contient un email n'est pas modifié ». Limite documentée, acceptée, non corrigée en v0.1.
 - **Absence de validation live** : zéro accès réseau EBP réel pendant toute la recette (gate réseau T14-1 active en continu) ; aucune assertion de compatibilité API n'est faite.
